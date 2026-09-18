@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="he" dir="rtl">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Market Run</title>
-<meta name="description" content="A shared grocery list for two.">
+<meta name="description" content="רשימת קניות משותפת לשניים.">
 
 <meta name="theme-color" content="#F3F4EF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#12140F" media="(prefers-color-scheme: dark)">
@@ -17,7 +17,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Heebo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Heebo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 
 <style>
 /* Baseline the page depends on. [hidden] must beat display:flex — the dock,
@@ -44,10 +44,10 @@ img{max-width:100%}
   --shadow:0 1px 2px rgba(25,28,22,.06), 0 8px 24px rgba(25,28,22,.06);
   --dock-shadow:0 -1px 0 var(--line), 0 -10px 24px rgba(25,28,22,.05);
 
-  /* Bricolage and Public Sans carry no Hebrew, so Hebrew text falls through
-     to Heebo rather than whatever the device happens to have. */
-  --display:"Bricolage Grotesque","Heebo","Public Sans",system-ui,sans-serif;
-  --body:"Public Sans","Heebo",system-ui,-apple-system,Segoe UI,sans-serif;
+  /* Heebo carries the Hebrew; Bricolage is kept only for the Latin wordmark. */
+  --display:"Heebo","Bricolage Grotesque",system-ui,sans-serif;
+  --brand:"Bricolage Grotesque","Heebo",system-ui,sans-serif;
+  --body:"Heebo",system-ui,-apple-system,Segoe UI,sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
 }
 @media (prefers-color-scheme: dark){
@@ -92,15 +92,15 @@ body{
   color:var(--ink);
   font-family:var(--body);
   font-size:16px;
-  line-height:1.45;
+  line-height:1.5;
   -webkit-font-smoothing:antialiased;
-  padding-block:0;
 }
 h1,h2,h3{margin:0;text-wrap:balance}
 button,input{font:inherit;color:inherit}
 button{cursor:pointer;background:none;border:none}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
-.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+/* Digits stay left-to-right inside RTL text. */
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate}
 
 .app{max-width:600px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;background:var(--ground)}
 
@@ -112,14 +112,14 @@ button{cursor:pointer;background:none;border:none}
   background:var(--ground);
   border-bottom:1px solid var(--line);
 }
-.brand{display:flex;align-items:center;gap:9px;margin-right:auto;min-width:0}
+.brand{display:flex;align-items:center;gap:9px;margin-inline-end:auto;min-width:0}
 .brand svg{width:21px;height:21px;color:var(--accent);flex:none}
 .brand h1{
-  font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:-.02em;
-  white-space:nowrap;
+  font-family:var(--brand);font-weight:800;font-size:20px;letter-spacing:-.02em;
+  white-space:nowrap;direction:ltr;
 }
 .icon-btn{
-  width:36px;height:36px;display:grid;place-items:center;border-radius:9px;color:var(--ink-muted);
+  width:38px;height:38px;display:grid;place-items:center;border-radius:9px;color:var(--ink-muted);
 }
 .icon-btn:hover{background:var(--surface-2);color:var(--ink)}
 .icon-btn svg{width:20px;height:20px}
@@ -127,9 +127,9 @@ button{cursor:pointer;background:none;border:none}
 .person{
   width:26px;height:26px;border-radius:50%;flex:none;
   display:grid;place-items:center;
-  font-family:var(--mono);font-size:11px;font-weight:600;
+  font-size:11px;font-weight:700;
   color:#fff;background:var(--ink-faint);
-  text-transform:uppercase;user-select:none;
+  user-select:none;
 }
 
 /* ---------- scroll area ---------- */
@@ -156,18 +156,18 @@ button{cursor:pointer;background:none;border:none}
 .addbar button:hover{filter:brightness(1.06)}
 
 .suggest{
-  position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:15;
+  position:absolute;inset-inline:0;top:calc(100% + 6px);z-index:15;
   background:var(--surface);border:1px solid var(--line);border-radius:11px;
   box-shadow:var(--shadow);overflow:hidden;
 }
 .suggest button{
   display:flex;width:100%;align-items:center;gap:10px;
-  padding:11px 14px;text-align:left;border-bottom:1px solid var(--line);
+  padding:12px 14px;text-align:start;border-bottom:1px solid var(--line);
 }
 .suggest button:last-child{border-bottom:none}
 .suggest button:hover,.suggest button[data-active="1"]{background:var(--accent-soft)}
 .suggest .s-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.suggest .s-sub{font-family:var(--mono);font-size:13px;color:var(--ink-muted)}
+.suggest .s-sub{font-size:13px;color:var(--ink-muted)}
 .suggest button.s-cmd .s-name{color:var(--accent);font-weight:600}
 .suggest button:disabled{color:var(--ink-faint);cursor:default;background:none}
 .suggest button:disabled:hover{background:none}
@@ -176,10 +176,7 @@ button{cursor:pointer;background:none;border:none}
 .progress{margin-top:18px;display:flex;align-items:center;gap:12px}
 .pbar{flex:1;height:4px;background:var(--surface-2);border-radius:999px;overflow:hidden}
 .pbar i{display:block;height:100%;background:var(--accent);border-radius:999px;transition:width .25s ease}
-.ptext{
-  flex:none;font-family:var(--mono);font-size:11.5px;
-  color:var(--ink-faint);font-variant-numeric:tabular-nums;
-}
+.ptext{flex:none;font-size:12px;color:var(--ink-faint)}
 
 /* ---------- list ---------- */
 .aisle{margin-top:22px}
@@ -187,17 +184,12 @@ button{cursor:pointer;background:none;border:none}
   display:flex;align-items:center;gap:8px;
   padding:0 2px 7px;border-bottom:1px solid var(--line-strong);
 }
-.aisle-head .ico{
-  font-size:14px;line-height:1;flex:none;
-  width:18px;text-align:center;
-}
-/* Hebrew takes no case and doesn't want tracking, so the header is set a
-   touch larger and tighter than the uppercase Latin version was. */
+.aisle-head .ico{font-size:15px;line-height:1;flex:none;width:19px;text-align:center}
 .aisle-head h2{
   font-family:var(--display);font-weight:700;font-size:13.5px;
-  letter-spacing:.005em;color:var(--ink-muted);
+  color:var(--ink-muted);
 }
-.aisle-head .count{font-family:var(--mono);font-size:11px;color:var(--ink-faint);margin-left:auto}
+.aisle-head .count{font-size:11.5px;color:var(--ink-faint);margin-inline-start:auto}
 
 .row{
   display:flex;align-items:center;gap:12px;
@@ -216,13 +208,13 @@ button{cursor:pointer;background:none;border:none}
 .row[data-done="1"] .check{background:var(--accent);border-color:var(--accent)}
 .row[data-done="1"] .check svg{opacity:1}
 
-.r-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;text-align:left}
+.r-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;text-align:start}
 .r-name{font-weight:500;overflow-wrap:anywhere}
 .r-sub{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-faint)}
 .qty{
   font-family:var(--mono);font-size:11.5px;font-weight:500;
   background:var(--surface-2);color:var(--ink-muted);
-  padding:1px 6px;border-radius:3px;
+  padding:1px 6px;border-radius:3px;direction:ltr;unicode-bidi:isolate;
 }
 .r-more{
   width:34px;height:34px;flex:none;display:grid;place-items:center;
@@ -236,11 +228,11 @@ button{cursor:pointer;background:none;border:none}
   margin-top:26px;background:var(--surface);border:1px solid var(--line);
   border-radius:14px;padding:22px 20px;box-shadow:var(--shadow);
 }
-.empty h2{font-family:var(--display);font-weight:700;font-size:18px;letter-spacing:-.02em}
-.empty p{margin:7px 0 0;color:var(--ink-muted);font-size:14px;max-width:46ch}
+.empty h2{font-family:var(--display);font-weight:700;font-size:18px}
+.empty p{margin:7px 0 0;color:var(--ink-muted);font-size:14.5px;max-width:48ch}
 .empty .hint{margin-top:13px;font-size:13px;color:var(--ink-faint)}
 .kbd{
-  font-family:var(--mono);font-size:12.5px;
+  font-size:12.5px;
   background:var(--surface-2);color:var(--ink-muted);
   padding:1px 6px;border-radius:4px;white-space:nowrap;
   unicode-bidi:isolate;
@@ -249,7 +241,7 @@ button{cursor:pointer;background:none;border:none}
 .chip{
   display:flex;align-items:center;gap:6px;
   border:1px solid var(--line-strong);border-radius:999px;
-  padding:6px 13px;font-size:13.5px;font-weight:500;color:var(--ink-muted);
+  padding:7px 13px;font-size:14px;font-weight:500;color:var(--ink-muted);
   background:var(--ground);
 }
 .chip:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
@@ -277,7 +269,7 @@ button{cursor:pointer;background:none;border:none}
 .btn-ghost:hover{border-color:var(--ink-faint);color:var(--ink)}
 .btn-danger{background:var(--danger);color:#fff}
 .btn-danger:hover{filter:brightness(1.08)}
-.btn .n{font-family:var(--mono);opacity:.75;font-weight:500}
+.btn .n{font-family:var(--mono);opacity:.75;font-weight:500;direction:ltr;unicode-bidi:isolate}
 
 /* ---------- sheet ---------- */
 .veil{
@@ -291,55 +283,51 @@ button{cursor:pointer;background:none;border:none}
   border-radius:16px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.3);
 }
 .sheet-head{display:flex;align-items:center;gap:12px;margin-bottom:16px}
-.sheet-head h2{font-family:var(--display);font-weight:800;font-size:19px;letter-spacing:-.02em;margin-right:auto}
+.sheet-head h2{font-family:var(--display);font-weight:800;font-size:19px;margin-inline-end:auto}
 .sheet-row{display:flex;gap:10px;margin-top:4px}
+.sublabel{font-size:13px;color:var(--ink-faint);margin:4px 0 10px;line-height:1.5}
+.linkbtn{font-size:14.5px;color:var(--accent);font-weight:600;padding:10px 2px;text-align:start}
+.linkbtn.danger{color:var(--danger)}
 
 /* Sheet form — 16px inputs so iOS doesn't zoom the page on focus. */
 .field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
-.field label{
-  font-size:11px;letter-spacing:.09em;text-transform:uppercase;
-  color:var(--ink-faint);font-weight:700;
-}
+.field label{font-size:12px;color:var(--ink-faint);font-weight:700}
 .field input{
   background:var(--surface);border:1px solid var(--line);border-radius:11px;
   padding:14px;font-size:16px;width:100%;
 }
 .field input:focus{border-color:var(--accent);outline:none}
-.field.narrow input{width:130px}
+.field.narrow input{width:140px}
 .apicks{display:flex;flex-wrap:wrap;gap:7px}
 .apick{
   display:flex;align-items:center;gap:6px;
   border:1px solid var(--line);background:var(--surface);
-  border-radius:999px;padding:9px 13px;font-size:13.5px;color:var(--ink-muted);
+  border-radius:999px;padding:9px 13px;font-size:14px;color:var(--ink-muted);
 }
 .apick[data-sel="1"]{
   border-color:var(--accent);background:var(--accent-soft);
   color:var(--accent);font-weight:600;
 }
-.sublabel{font-size:12.5px;color:var(--ink-faint);margin:4px 0 8px}
-.linkbtn{font-size:14px;color:var(--accent);font-weight:600;padding:10px 2px;text-align:left}
-.linkbtn.danger{color:var(--danger)}
 
 /* ---------- banner + toast ---------- */
 .banner{
   margin:14px 18px 0;padding:11px 14px;border-radius:10px;
   background:var(--accent-soft);border:1px solid var(--line);
-  font-size:13px;color:var(--ink-muted);
+  font-size:13.5px;color:var(--ink-muted);
 }
-
 .toast{
   position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom));
   transform:translateX(-50%);z-index:80;
   display:flex;align-items:center;gap:12px;
   background:var(--ink);color:var(--ground);
-  padding:11px 18px;border-radius:999px;font-size:13.5px;font-weight:500;
+  padding:11px 18px;border-radius:999px;font-size:14px;font-weight:500;
   box-shadow:0 8px 28px rgba(0,0,0,.28);max-width:calc(100vw - 32px);
 }
-.toast.with-action{padding:9px 9px 9px 18px}
+.toast.with-action{padding-block:9px;padding-inline:18px 9px}
 .toast .msg{flex:1;min-width:0}
 /* currentColor so the button flips with the toast between themes. */
 .toast .undo{
-  flex:none;color:inherit;font-weight:700;font-size:13px;
+  flex:none;color:inherit;font-weight:700;font-size:13.5px;
   padding:9px 15px;border-radius:999px;border:1px solid currentColor;
   opacity:.8;
 }
@@ -362,7 +350,7 @@ button{cursor:pointer;background:none;border:none}
       <h1>Market Run</h1>
     </div>
     <div class="person" id="me-chip" hidden></div>
-    <button class="icon-btn" id="btn-settings" aria-label="Settings">
+    <button class="icon-btn" id="btn-settings" aria-label="הגדרות">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
         <path d="M4 7.5h9M19 7.5h1M4 16.5h4M14 16.5h6"/>
         <circle cx="16" cy="7.5" r="2.2"/><circle cx="11" cy="16.5" r="2.2"/>
@@ -376,9 +364,9 @@ button{cursor:pointer;background:none;border:none}
     <div class="addwrap">
       <form class="addbar" id="add-form" autocomplete="off">
         <input id="add-input" name="add-input" type="text" dir="auto"
-               placeholder="Add an item — try “2 milk” or “1kg tomatoes”"
-               aria-label="Add an item">
-        <button type="submit">Add</button>
+               placeholder="מה צריך לקנות? אפשר גם ״2 חלב״"
+               aria-label="הוספת פריט">
+        <button type="submit">הוספה</button>
       </form>
       <div class="suggest" id="suggest" hidden></div>
     </div>
@@ -395,7 +383,7 @@ button{cursor:pointer;background:none;border:none}
 </div>
 
 <div class="veil" id="veil" hidden>
-  <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Panel"></div>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="חלונית"></div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
@@ -437,8 +425,8 @@ var CATS = [
   ["other","שונות","📦"]
 ];
 
-/* Keyword map drives the aisle each item lands in. Hebrew stems are here
-   because the shelf labels in the actual stores are in Hebrew. */
+/* Keyword map drives the aisle each item lands in. English is kept because
+   brand names and imports get typed in Latin even in a Hebrew list. */
 var KEYWORDS = {
   produce:["tomato","cucumber","onion","garlic","potato","carrot","lettuce","pepper","avocado","banana","apple","orange","lemon","grape","melon","watermelon","strawberr","parsley","cilantro","coriander","mint","basil","mushroom","zucchini","eggplant","spinach","broccoli","cauliflower","date","fig","pomegranate","salad","herb","ginger","celery","corn","peach","pear","plum","mango","kiwi","cabbage","radish","beet","sweet potato",
     "עגבני","מלפפון","בצל","שום","תפוח אדמה","תפוא","גזר","חסה","פלפל","אבוקדו","בננ","תפוח","תפוז","לימון","ענב","מלון","אבטיח","תות","פטרוזיליה","כוסברה","נענע","בזיליקום","פטריו","קישוא","חציל","תרד","ברוקולי","כרובית","תמר","תאנ","רימון","סלט","זנגביל","סלרי","תירס","אפרסק","אגס","שזיף","מנגו","קיווי","כרוב","צנון","סלק","בטטה"],
@@ -461,9 +449,9 @@ var KEYWORDS = {
 };
 
 var QUICK_ADD = [
-  ["Milk","🥛"],["Bread","🥖"],["Eggs","🥚"],["Tomatoes","🍅"],
-  ["Cucumbers","🥒"],["Chicken","🍗"],["Hummus","🫘"],["Bananas","🍌"],
-  ["Coffee","☕"],["Toilet paper","🧻"],["Olive oil","🫒"],["Yogurt","🍦"]
+  ["חלב","🥛"],["לחם","🥖"],["ביצים","🥚"],["עגבניות","🍅"],
+  ["מלפפונים","🥒"],["עוף","🍗"],["חומוס","🫘"],["בננות","🍌"],
+  ["קפה","☕"],["נייר טואלט","🧻"],["שמן זית","🫒"],["יוגורט","🍦"]
 ];
 
 /* The add bar doubles as a command line. Verbs are matched at the start of
@@ -495,15 +483,13 @@ var CHECKED_TARGETS = [
   "כל מה שלקחתי","מה שלקחתי","כל מה שלקחנו","מה שלקחנו",
   "כל מה שקניתי","מה שקניתי","כל מה שקנינו","מה שקנינו",
   "כל מה שבעגלה","מה שבעגלה","כל מה שבסל","מה שבסל","בעגלה","בסל",
-  "all checked","everything checked","the checked","checked","all the checked",
-  "all marked","everything marked","the marked","marked",
-  "what i got","everything i got","what we got","all i got",
-  "everything in the cart","all in the cart","in the cart","the cart"
+  "all checked","everything checked","the checked","checked",
+  "all marked","the marked","marked","what i got","the cart"
 ];
 
 var ALL_TARGETS = [
   "הכל","כל הרשימה","כל הפריטים","כל המוצרים","כולם","הרשימה",
-  "all","everything","the list","the whole list","all items","everything on the list"
+  "all","everything","the list","the whole list","all items"
 ];
 
 /* Trailing scope phrases that carry no meaning for the parser. */
@@ -599,7 +585,7 @@ function catIcon(key){
   return "📦";
 }
 
-/* "2 milk", "milk x2", "1kg tomatoes" -> {name, qty} */
+/* "2 חלב", "חלב x2", "1kg עגבניות" -> {name, qty} */
 function parseEntry(raw){
   var s = String(raw).trim().replace(/\s+/g," ");
   var qty = "";
@@ -676,54 +662,48 @@ function parseCommand(raw){
   rest = rest.replace(/\s+from\s+(the\s+)?(list|cart|basket)$/i,"").trim();
   if(!rest) return null;
 
-  var he = HEBREW.test(s);
   var t = rest.toLowerCase();
-  if(CHECKED_TARGETS.indexOf(t) !== -1) return {action:"clearChecked", he:he};
-  if(ALL_TARGETS.indexOf(t) !== -1)     return {action:"clearAll", he:he};
+  if(CHECKED_TARGETS.indexOf(t) !== -1) return {action:"clearChecked"};
+  if(ALL_TARGETS.indexOf(t) !== -1)     return {action:"clearAll"};
 
   /* An ambiguous verb with nothing to remove is just an item being added. */
   if(AMBIGUOUS_VERBS.indexOf(verb) !== -1 && !findItems(rest).length) return null;
 
-  return {action:"removeItem", target:rest, he:he};
+  return {action:"removeItem", target:rest};
 }
 
 /* What the command would do, as rows for the suggestion box. */
 function commandEntries(cmd){
-  var he = cmd.he;
-
   if(cmd.action === "clearChecked"){
     var n = doneCount();
-    if(!n) return [{label: he ? "אין פריטים מסומנים" : "Nothing is checked off", muted:true}];
+    if(!n) return [{label:"אין פריטים מסומנים", muted:true}];
     return [{
       cmd:true,
-      label: he ? ("מחיקת " + (n === 1 ? "הפריט המסומן" : n + " פריטים מסומנים"))
-                : ("Remove " + n + " checked item" + (n>1?"s":"")),
-      run: function(){ clearChecked(he); }
+      label:"מחיקת " + (n === 1 ? "הפריט המסומן" : n + " פריטים מסומנים"),
+      run: function(){ clearChecked(); }
     }];
   }
 
   if(cmd.action === "clearAll"){
     var t = Object.keys(state.items).length;
-    if(!t) return [{label: he ? "הרשימה כבר ריקה" : "The list is already empty", muted:true}];
+    if(!t) return [{label:"הרשימה כבר ריקה", muted:true}];
     return [{
       cmd:true,
-      label: he ? (t === 1 ? "מחיקת הפריט האחרון" : "מחיקת כל " + t + " הפריטים")
-                : ("Remove all " + t + " item" + (t>1?"s":"")),
-      run: function(){ confirmClearAll(he); }
+      label: t === 1 ? "מחיקת הפריט האחרון" : "מחיקת כל " + t + " הפריטים",
+      run: function(){ confirmClearAll(); }
     }];
   }
 
   var hits = findItems(cmd.target);
   if(!hits.length){
-    return [{label: he ? ("“" + cmd.target + "” לא נמצא ברשימה")
-                       : ("“" + cmd.target + "” isn't on the list"), muted:true}];
+    return [{label:"“" + cmd.target + "” לא נמצא ברשימה", muted:true}];
   }
   return hits.slice(0,5).map(function(it){
     return {
       cmd:true,
-      label: (he ? "מחיקת " : "Remove ") + it.name,
+      label:"מחיקת " + it.name,
       sub: it.qty ? (/^\d+(\.\d+)?$/.test(it.qty) ? "×" + it.qty : it.qty) : "",
-      run: function(){ removeItemRec(it.id, he); }
+      run: function(){ removeItemRec(it.id); }
     };
   });
 }
@@ -753,12 +733,12 @@ function flash(msg, action){
 }
 
 /* A removal stays undoable for as long as its toast is up. */
-function offerUndo(items, msg, he){
+function offerUndo(items, msg){
   if(!items.length) return;
-  flash(msg, {label: he ? "בטל" : "Undo", run: function(){ restore(items, he); }});
+  flash(msg, {label:"החזר", run: function(){ restore(items); }});
 }
 
-async function restore(items, he){
+async function restore(items){
   items.forEach(function(it){ state.items[it.id] = it; });
   render();
   if(local){ saveLocal(); }
@@ -768,8 +748,7 @@ async function restore(items, he){
       catch(e){ handleWriteError(e); return; }
     }
   }
-  flash(he ? (items.length === 1 ? "הוחזר לרשימה." : "הוחזרו " + items.length + " פריטים.")
-           : (items.length === 1 ? "Put back." : items.length + " items put back."));
+  flash(items.length === 1 ? "הוחזר לרשימה." : "הוחזרו " + items.length + " פריטים.");
 }
 
 /* ------------------------------------------------------------ persistence */
@@ -792,12 +771,12 @@ function loadLocal(){
 function handleWriteError(e){
   var code = (e && e.code) || "";
   if(code === "permission-denied"){
-    flash("The list refused that change — the database rules need updating.");
+    flash("הרשימה נעולה — צריך לעדכן את חוקי הגישה.");
   } else if(code === "unavailable"){
     /* Firestore queues the write and replays it once there's signal again. */
-    flash("No signal — this will sync when you're back online.");
+    flash("אין חיבור — השינוי יסונכרן כשתחזרו לרשת.");
   } else {
-    flash("Couldn't save that. Check your connection.");
+    flash("לא הצלחנו לשמור. בדקו את החיבור.");
   }
 }
 
@@ -808,12 +787,13 @@ async function writeItem(item){
   try{ await db.doc("items/" + item.id).set(item); }
   catch(e){ handleWriteError(e); }
 }
-async function removeItemRec(id, he){
+async function removeItemRec(id){
   var item = state.items[id];
   if(!item) return;
   delete state.items[id];
   render();
-  offerUndo([item], he ? (item.name + " הוסר.") : (item.name + " removed."), he);
+  /* Colon form sidesteps gender/number agreement with arbitrary item names. */
+  offerUndo([item], "נמחק: " + item.name);
   if(local){ saveLocal(); return; }
   try{ await db.doc("items/" + id).delete(); }
   catch(e){ handleWriteError(e); }
@@ -858,7 +838,7 @@ function addItem(rawName, presetQty){
       done: false
     });
     writeItem(next);
-    flash("Already on the list — now " + next.qty + ".");
+    flash("כבר ברשימה — עכשיו " + next.qty + ".");
     return;
   }
 
@@ -883,23 +863,20 @@ function toggleDone(id){
   writeItem(Object.assign({}, it, {done: !it.done}));
 }
 
-function clearChecked(he){
+function clearChecked(){
   var done = Object.keys(state.items).filter(function(k){ return state.items[k].done; });
-  if(!done.length){
-    flash(he ? "עוד לא סימנת כלום." : "Nothing checked off yet.");
-    return;
-  }
+  if(!done.length){ flash("עוד לא סימנתם כלום."); return; }
   var removed = done.map(function(k){ return state.items[k]; });
   deleteIds(done);
-  offerUndo(removed,
-    he ? (removed.length === 1 ? "נמחק פריט אחד." : "נמחקו " + removed.length + " פריטים.")
-       : ("Cleared " + removed.length + " item" + (removed.length>1?"s":"") + "."), he);
+  offerUndo(removed, removed.length === 1
+    ? "נמחק פריט אחד."
+    : "נמחקו " + removed.length + " פריטים.");
 }
 
 /* Renaming a mistyped item also drops the typo from autocomplete. */
 function renameItem(id, newName, newQty, cat){
   var cur = state.items[id];
-  if(!cur){ flash("That item is no longer on the list."); return; }
+  if(!cur){ flash("הפריט כבר לא ברשימה."); return; }
 
   var oldSlug = slug(cur.name), newSlug = slug(newName);
 
@@ -917,7 +894,7 @@ function renameItem(id, newName, newQty, cat){
       done: false
     }));
     deleteIds([id]);
-    flash("Merged into " + newName + ".");
+    flash("אוחד עם " + newName + ".");
     return;
   }
 
@@ -953,7 +930,7 @@ function renderProgress(){
   document.getElementById("pbar-fill").style.width =
     Math.round(got / total * 100) + "%";
   document.getElementById("ptext").textContent =
-    got + " got · " + (total - got) + " left";
+    "בעגלה " + got + " מתוך " + total;
 }
 
 function renderList(){
@@ -974,8 +951,8 @@ function renderList(){
   if(doneCount() === items.length){
     var done = el("div","donenote");
     done.appendChild(el("div","cheer","✅"));
-    done.appendChild(el("div","big","That's everything."));
-    done.appendChild(el("p",null,"Clear the cart below to empty the list."));
+    done.appendChild(el("div","big","זהו, הכל נאסף."));
+    done.appendChild(el("p",null,"אפשר לנקות את העגלה מלמטה."));
     body.appendChild(done);
   }
 }
@@ -1001,7 +978,7 @@ function itemRow(it){
   var check = el("button","check");
   check.type = "button";
   check.setAttribute("aria-pressed", it.done ? "true" : "false");
-  check.setAttribute("aria-label", (it.done ? "Uncheck " : "Check off ") + it.name);
+  check.setAttribute("aria-label", (it.done ? "ביטול סימון " : "סימון ") + it.name);
   check.appendChild(svg(["M4.5 12.5l5 5 10-11"], "3"));
   check.addEventListener("click", function(){ toggleDone(it.id); });
   row.appendChild(check);
@@ -1027,7 +1004,7 @@ function itemRow(it){
 
   var more = el("button","r-more");
   more.type = "button";
-  more.setAttribute("aria-label","Edit " + it.name);
+  more.setAttribute("aria-label","עריכת " + it.name);
   more.appendChild(svg(["M12 5.4h.01","M12 12h.01","M12 18.6h.01"], "2.6"));
   more.addEventListener("click", function(ev){
     ev.stopPropagation();
@@ -1043,32 +1020,32 @@ function openEditItem(it){
   var catTouched = false;
 
   openSheet(function(sheet){
-    sheetHead(sheet, "Edit item");
+    sheetHead(sheet, "עריכת פריט");
 
     var f1 = el("div","field");
-    var l1 = el("label",null,"Name");
+    var l1 = el("label",null,"שם");
     l1.setAttribute("for","edit-name");
     var i1 = el("input");
     i1.type = "text"; i1.id = "edit-name"; i1.name = "edit-name";
     i1.value = it.name;
     i1.setAttribute("dir","auto");
     i1.setAttribute("autocomplete","off");
-    i1.setAttribute("autocapitalize","none");
     f1.appendChild(l1); f1.appendChild(i1);
     sheet.appendChild(f1);
 
     var f2 = el("div","field narrow");
-    var l2 = el("label",null,"Quantity");
+    var l2 = el("label",null,"כמות");
     l2.setAttribute("for","edit-qty");
     var i2 = el("input");
     i2.type = "text"; i2.id = "edit-qty"; i2.name = "edit-qty";
     i2.value = it.qty || "";
-    i2.placeholder = "2 · 1kg";
+    i2.placeholder = "2";
+    i2.setAttribute("dir","auto");
     f2.appendChild(l2); f2.appendChild(i2);
     sheet.appendChild(f2);
 
     var f3 = el("div","field");
-    f3.appendChild(el("label",null,"Aisle"));
+    f3.appendChild(el("label",null,"מדף"));
     var picks = el("div","apicks");
     CATS.forEach(function(c){
       var b = el("button","apick");
@@ -1093,7 +1070,7 @@ function openEditItem(it){
 
     var save = function(){
       var newName = i1.value.trim();
-      if(!newName){ flash("Give the item a name."); i1.focus(); return; }
+      if(!newName){ flash("צריך לתת שם לפריט."); i1.focus(); return; }
       var renamed = newName !== it.name;
       /* A fixed typo should land in the right aisle unless you picked one. */
       var cat = catTouched ? chosenCat : (renamed ? guessCat(newName) : (it.cat || "other"));
@@ -1105,16 +1082,16 @@ function openEditItem(it){
     i2.addEventListener("keydown", onEnter);
 
     var row = el("div","sheet-row");
-    var cancel = el("button","btn btn-ghost","Cancel");
+    var cancel = el("button","btn btn-ghost","ביטול");
     cancel.type = "button";
     cancel.addEventListener("click", closeSheet);
-    var go = el("button","btn btn-primary","Save");
+    var go = el("button","btn btn-primary","שמירה");
     go.type = "button";
     go.addEventListener("click", save);
     row.appendChild(cancel); row.appendChild(go);
     sheet.appendChild(row);
 
-    var del = el("button","linkbtn danger","Remove this item");
+    var del = el("button","linkbtn danger","מחיקת הפריט");
     del.type = "button";
     del.addEventListener("click", function(){
       closeSheet();
@@ -1123,21 +1100,19 @@ function openEditItem(it){
     sheet.appendChild(del);
 
     setTimeout(function(){ i1.focus(); i1.select(); }, 30);
-  }, "Edit item");
+  }, "עריכת פריט");
 }
 
 function emptyState(){
   var e = el("div","empty");
-  e.appendChild(el("h2",null,"Nothing on the list."));
-  e.appendChild(el("p",null,"Add what you need above — whatever either of you adds shows up on both phones. At the store, tap an item to drop it in the cart; what's still missing stays at the top of each aisle."));
+  e.appendChild(el("h2",null,"הרשימה ריקה."));
+  e.appendChild(el("p",null,"אפשר להוסיף פריטים למעלה — כל מה שאחד מכם מוסיף מופיע מיד אצל השני. בסופר מקישים על פריט כדי להכניס אותו לעגלה, ומה שעוד חסר נשאר למעלה בכל מדף."));
 
   var hint = el("p","hint");
-  hint.appendChild(document.createTextNode("The same box takes instructions, not just items — "));
-  var ex1 = el("span","kbd","תוריד מלפפון מהרשימה");
-  ex1.setAttribute("dir","rtl");
-  hint.appendChild(ex1);
-  hint.appendChild(document.createTextNode(" or "));
-  hint.appendChild(el("span","kbd","delete all checked"));
+  hint.appendChild(document.createTextNode("אפשר גם לכתוב הוראה במקום פריט — "));
+  hint.appendChild(el("span","kbd","תוריד מלפפון מהרשימה"));
+  hint.appendChild(document.createTextNode(" או "));
+  hint.appendChild(el("span","kbd","מחיקת כל המסומנים"));
   hint.appendChild(document.createTextNode("."));
   e.appendChild(hint);
 
@@ -1166,9 +1141,9 @@ function renderDock(){
 
   var fin = el("button","btn btn-primary");
   fin.type = "button";
-  fin.appendChild(document.createTextNode("Clear what I got"));
+  fin.appendChild(document.createTextNode("ניקוי העגלה"));
   fin.appendChild(el("span","n num", String(got)));
-  fin.addEventListener("click", function(){ clearChecked(false); });
+  fin.addEventListener("click", function(){ clearChecked(); });
   dock.appendChild(fin);
 }
 
@@ -1191,7 +1166,7 @@ function paintPeople(){
     if(!who) return;
     n.textContent = who.trim().charAt(0) || "?";
     n.style.background = colorFor(who);
-    n.title = (who === myName) ? who + " (you)" : who;
+    n.title = (who === myName) ? who + " (את/ה)" : who;
   });
 }
 
@@ -1221,52 +1196,51 @@ function sheetHead(sheet, title){
   h.appendChild(el("h2",null,title));
   var x = el("button","icon-btn");
   x.type = "button";
-  x.setAttribute("aria-label","Close");
+  x.setAttribute("aria-label","סגירה");
   x.appendChild(svg(["M6 6l12 12M18 6L6 18"],"2"));
   x.addEventListener("click", closeSheet);
   h.appendChild(x);
   sheet.appendChild(h);
 }
 
-function confirmClearAll(he){
+function confirmClearAll(){
   var n = Object.keys(state.items).length;
   openSheet(function(sheet){
-    sheetHead(sheet, he ? "למחוק את כל הרשימה?" : "Remove the whole list?");
-    var p = el("p",null, he ? ((n === 1 ? "פריט אחד יימחק" : n + " פריטים יימחקו") + " לשניכם.")
-                            : (n + " item" + (n>1?"s":"") + " will be removed, for both of you."));
-    p.style.cssText = "margin:0 0 18px;color:var(--ink-muted);font-size:14px";
+    sheetHead(sheet, "למחוק את כל הרשימה?");
+    var p = el("p",null, (n === 1 ? "פריט אחד יימחק" : n + " פריטים יימחקו") + " לשניכם.");
+    p.style.cssText = "margin:0 0 18px;color:var(--ink-muted);font-size:14.5px";
     sheet.appendChild(p);
 
     var row = el("div","sheet-row");
-    var cancel = el("button","btn btn-ghost", he ? "ביטול" : "Cancel");
+    var cancel = el("button","btn btn-ghost","ביטול");
     cancel.type = "button";
     cancel.addEventListener("click", closeSheet);
-    var go = el("button","btn btn-danger", he ? "מחק הכל" : "Remove all");
+    var go = el("button","btn btn-danger","מחיקת הכל");
     go.type = "button";
     go.addEventListener("click", function(){
       closeSheet();
       var ids = Object.keys(state.items);
       var removed = ids.map(function(k){ return state.items[k]; });
       deleteIds(ids);
-      offerUndo(removed, he ? "הרשימה נוקתה." : "List cleared.", he);
+      offerUndo(removed, "הרשימה נוקתה.");
     });
     row.appendChild(cancel);
     row.appendChild(go);
     sheet.appendChild(row);
-  }, he ? "אישור מחיקה" : "Confirm clearing the list");
+  }, "אישור מחיקה");
 }
 
 function openSettings(){
   openSheet(function(sheet){
-    sheetHead(sheet, "Settings");
+    sheetHead(sheet, "הגדרות");
 
     var f = el("div","field");
-    var lab = el("label",null,"Your name");
+    var lab = el("label",null,"השם שלך");
     lab.setAttribute("for","my-name");
     var inp = el("input");
     inp.type = "text"; inp.id = "my-name"; inp.name = "my-name";
     inp.value = myName;
-    inp.placeholder = "Almog";
+    inp.placeholder = "אלמוג";
     inp.setAttribute("dir","auto");
     inp.addEventListener("change", function(){ setMyName(inp.value); });
     inp.addEventListener("keydown", function(e){
@@ -1274,22 +1248,22 @@ function openSettings(){
     });
     f.appendChild(lab); f.appendChild(inp);
     sheet.appendChild(f);
-    sheet.appendChild(el("div","sublabel","Shown as a small initial next to anything you add, so you can tell your items apart. Stays on this device."));
+    sheet.appendChild(el("div","sublabel","מופיע כאות קטנה ליד כל מה שאתם מוסיפים, כדי שתדעו מי הוסיף מה. נשמר במכשיר הזה בלבד."));
 
-    sheet.appendChild(el("div","sublabel","Typing an item adds it. Typing an instruction — תוריד חלב, delete all checked — does that instead."));
+    sheet.appendChild(el("div","sublabel","כתיבת פריט מוסיפה אותו. כתיבת הוראה — תוריד חלב, מחיקת כל המסומנים — מבצעת אותה במקום."));
 
-    var clear = el("button","linkbtn danger","Remove every item from the list");
+    var clear = el("button","linkbtn danger","מחיקת כל הפריטים ברשימה");
     clear.type = "button";
     clear.addEventListener("click", function(){
-      if(!Object.keys(state.items).length){ flash("The list is already empty."); return; }
-      confirmClearAll(false);
+      if(!Object.keys(state.items).length){ flash("הרשימה כבר ריקה."); return; }
+      confirmClearAll();
     });
     sheet.appendChild(clear);
 
-    var note = el("p",null,"Items you've added before are remembered by name, so they autocomplete next time.");
-    note.style.cssText = "margin:10px 0 0;font-size:12.5px;color:var(--ink-faint)";
+    var note = el("p",null,"פריטים שהוספתם בעבר נשמרים לפי השם, כך שהם מושלמים אוטומטית בפעם הבאה.");
+    note.style.cssText = "margin:10px 0 0;font-size:13px;color:var(--ink-faint)";
     sheet.appendChild(note);
-  }, "Settings");
+  }, "הגדרות");
 }
 
 /* -------------------------------------------------------------- suggest */
@@ -1387,10 +1361,10 @@ document.getElementById("add-form").addEventListener("submit", function(e){
         live[0].run();
       } else if(!live.length){
         /* Keep what they typed so a typo is one edit away from working. */
-        flash(entries[0] ? entries[0].label : (cmd.he ? "לא נמצא" : "Not found"));
+        flash(entries[0] ? entries[0].label : "לא נמצא");
         return;
       } else {
-        flash(cmd.he ? "יש כמה כאלה — בחרו אחד" : "Several match — pick one");
+        flash("יש כמה כאלה — בחרו אחד");
         return;
       }
     } else {
@@ -1441,7 +1415,7 @@ render();
 
 (function(){
   if(typeof firebase === "undefined" || !firebase.firestore){
-    banner("Couldn't load the sync service — this device is working on its own copy of the list.");
+    banner("לא הצלחנו לטעון את שירות הסנכרון — המכשיר הזה עובד על עותק מקומי.");
     return;
   }
 
@@ -1450,7 +1424,7 @@ render();
     firebase.initializeApp(FIREBASE_CONFIG);
     fs = firebase.firestore();
   }catch(e){
-    banner("Couldn't reach the shared list — working on this device only.");
+    banner("אין חיבור לרשימה המשותפת — עובדים על המכשיר הזה בלבד.");
     return;
   }
 
@@ -1477,8 +1451,8 @@ render();
 
   var onErr = function(e){
     banner(((e && e.code) === "permission-denied")
-      ? "This list is locked — the Firestore rules need updating."
-      : "Lost touch with the shared list. It will reconnect on its own.");
+      ? "הרשימה נעולה — צריך לעדכן את חוקי הגישה ב-Firebase."
+      : "החיבור לרשימה המשותפת נותק. הוא יתחבר מחדש בעצמו.");
   };
 
   db.collection("items").onSnapshot(function(snap){
