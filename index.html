@@ -1,9 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Market Run</title>
+<meta name="description" content="A shared grocery list for two.">
+
+<meta name="theme-color" content="#F3F4EF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#12140F" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Market Run">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600;700&display=swap">
 
 <style>
+/* Baseline the page depends on. [hidden] must beat display:flex — the dock,
+   progress bar and sheets are all flex containers toggled by that attribute. */
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+
 :root{
   color-scheme: light;
   --ground:#F3F4EF;
@@ -62,7 +85,6 @@
   --dock-shadow:0 -1px 0 var(--line), 0 -10px 24px rgba(0,0,0,.35);
 }
 
-*{box-sizing:border-box}
 body{
   background:var(--ground);
   color:var(--ink);
@@ -301,13 +323,6 @@ button{cursor:pointer;background:none;border:none}
   font-size:13px;color:var(--ink-muted);
 }
 
-/* View-only viewer: take the controls away rather than let writes fail. */
-body[data-ro="1"] .addwrap,
-body[data-ro="1"] .dock,
-body[data-ro="1"] .r-more{display:none}
-body[data-ro="1"] .check{opacity:.45}
-body[data-ro="1"] .check,
-body[data-ro="1"] .r-main{pointer-events:none}
 .toast{
   position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom));
   transform:translateX(-50%);z-index:80;
@@ -330,6 +345,8 @@ body[data-ro="1"] .r-main{pointer-events:none}
   *{animation:none!important;transition:none!important}
 }
 </style>
+</head>
+<body>
 
 <div class="app">
   <header class="topbar">
@@ -377,9 +394,27 @@ body[data-ro="1"] .r-main{pointer-events:none}
   <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Panel"></div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js"></script>
+
 <script>
 (function(){
 "use strict";
+
+/* --------------------------------------------------------------- config */
+
+var FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDZ3SZa6vV6GHYnoO7q76RdphtkWxHzuzo",
+  authDomain: "market-run-19f97.firebaseapp.com",
+  projectId: "market-run-19f97",
+  storageBucket: "market-run-19f97.firebasestorage.app",
+  messagingSenderId: "361554112766",
+  appId: "1:361554112766:web:1e35ed23561120855975af"
+};
+
+/* Everyone who opens this page shares this one list. The id is what the
+   security rules pin to, so nothing else in the project is reachable. */
+var LIST_ID = "mr-x8f3qn2vk9rt5wzp";
 
 /* ---------------------------------------------------------------- data */
 
@@ -478,12 +513,13 @@ var state = {
   catalog: {}    /* slug -> {name, cat} — names you've added before */
 };
 
-var db = null, userCap = null, myId = null;
-var local = true;           /* true => localStorage only */
-var readOnly = false;
+var db = null;
+var local = true;           /* true => this device only, no sync */
+var myName = "";            /* per-device, so items can say who added them */
 var suggestIdx = -1, suggestList = [];
 
 var LS = "marketrun.v1";
+var LS_NAME = "marketrun.name";
 
 /* ---------------------------------------------------------------- utils */
 
@@ -748,15 +784,12 @@ function loadLocal(){
 }
 
 function handleWriteError(e){
-  var code = e && e.code;
-  if(code === "invalid_argument"){
-    readOnly = true;
-    flash("You have view-only access to this list.");
-    render();
-  } else if(code === "quota_exceeded"){
-    flash("This list is full — clear some items first.");
-  } else if(code === "resource_exhausted"){
-    flash("Too many changes at once — give it a second.");
+  var code = (e && e.code) || "";
+  if(code === "permission-denied"){
+    flash("The list refused that change — the database rules need updating.");
+  } else if(code === "unavailable"){
+    /* Firestore queues the write and replays it once there's signal again. */
+    flash("No signal — this will sync when you're back online.");
   } else {
     flash("Couldn't save that. Check your connection.");
   }
@@ -770,7 +803,6 @@ async function writeItem(item){
   catch(e){ handleWriteError(e); }
 }
 async function removeItemRec(id, he){
-  if(!canWrite()) return;
   var item = state.items[id];
   if(!item) return;
   delete state.items[id];
@@ -803,16 +835,7 @@ async function deleteIds(ids){
 
 /* --------------------------------------------------------------- actions */
 
-/* Every mutation funnels through here, so a view-only viewer gets one clear
-   answer instead of a write that quietly fails. */
-function canWrite(){
-  if(!readOnly) return true;
-  flash("You can follow this list, but not change it.");
-  return false;
-}
-
 function addItem(rawName, presetQty){
-  if(!canWrite()) return;
   var parsed = parseEntry(rawName);
   if(!parsed.name) return;
   var sl = slug(parsed.name);
@@ -839,7 +862,7 @@ function addItem(rawName, presetQty){
     name: known ? known.name : parsed.name,
     qty: presetQty || parsed.qty || "",
     cat: cat,
-    addedBy: myId || "",
+    addedBy: myName || "",
     done: false,
     ts: Date.now()
   });
@@ -849,14 +872,12 @@ function addItem(rawName, presetQty){
 }
 
 function toggleDone(id){
-  if(!canWrite()) return;
   var it = state.items[id];
   if(!it) return;
   writeItem(Object.assign({}, it, {done: !it.done}));
 }
 
 function clearChecked(he){
-  if(!canWrite()) return;
   var done = Object.keys(state.items).filter(function(k){ return state.items[k].done; });
   if(!done.length){
     flash(he ? "עוד לא סימנת כלום." : "Nothing checked off yet.");
@@ -871,7 +892,6 @@ function clearChecked(he){
 
 /* Renaming a mistyped item also drops the typo from autocomplete. */
 function renameItem(id, newName, newQty, cat){
-  if(!canWrite()) return;
   var cur = state.items[id];
   if(!cur){ flash("That item is no longer on the list."); return; }
 
@@ -909,10 +929,6 @@ function renameItem(id, newName, newQty, cat){
 /* ---------------------------------------------------------------- render */
 
 function render(){
-  document.body.dataset.ro = readOnly ? "1" : "0";
-  if(readOnly && !document.querySelector(".banner")){
-    banner("You can follow this list, but only people with edit access can change it.");
-  }
   renderProgress();
   renderList();
   renderDock();
@@ -993,7 +1009,7 @@ function itemRow(it){
   if(it.addedBy){
     var dot = el("span","person");
     dot.style.width = "16px"; dot.style.height = "16px"; dot.style.fontSize = "8px";
-    dot.dataset.uid = it.addedBy;
+    dot.dataset.who = it.addedBy;
     sub.appendChild(dot);
   }
   if(sub.childNodes.length) main.appendChild(sub);
@@ -1146,31 +1162,36 @@ function renderDock(){
   dock.appendChild(fin);
 }
 
-/* Names come from other people — always set via textContent. */
-async function paintPeople(){
-  var nodes = Array.prototype.slice.call(document.querySelectorAll("[data-uid]"));
-  var ids = {};
-  nodes.forEach(function(n){ if(n.dataset.uid) ids[n.dataset.uid] = 1; });
-  var list = Object.keys(ids);
+/* A stable colour per name, so you two are consistently different. */
+function colorFor(name){
+  var h = 0;
+  for(var i=0;i<name.length;i++) h = (h * 31 + name.charCodeAt(i)) % 360;
+  return "hsl(" + h + " 42% 40%)";
+}
 
+/* Names are typed by people — always set via textContent. */
+function paintPeople(){
   var distinct = {};
   sortedItems().forEach(function(i){ if(i.addedBy) distinct[i.addedBy] = 1; });
   var many = Object.keys(distinct).length > 1;
-  nodes.forEach(function(n){
-    if(n.id !== "me-chip") n.hidden = !many;
-  });
 
-  if(!userCap || !list.length) return;
-  var ps;
-  try{ ps = await userCap.profiles(list); }catch(e){ return; }
-  nodes.forEach(function(n){
-    var p = ps[n.dataset.uid];
-    if(!p) return;
-    var nm = p.name || "Someone";
-    n.textContent = nm.trim().charAt(0) || "?";
-    n.style.background = p.color || "";
-    n.title = p.isMe ? nm + " (you)" : nm;
+  Array.prototype.forEach.call(document.querySelectorAll("[data-who]"), function(n){
+    var who = n.dataset.who;
+    if(n.id !== "me-chip") n.hidden = !(many && who);
+    if(!who) return;
+    n.textContent = who.trim().charAt(0) || "?";
+    n.style.background = colorFor(who);
+    n.title = (who === myName) ? who + " (you)" : who;
   });
+}
+
+function setMyName(name){
+  myName = String(name || "").trim().slice(0, 24);
+  try{ localStorage.setItem(LS_NAME, myName); }catch(e){}
+  var chip = document.getElementById("me-chip");
+  chip.hidden = !myName;
+  chip.dataset.who = myName;
+  render();
 }
 
 /* ---------------------------------------------------------------- sheets */
@@ -1198,7 +1219,6 @@ function sheetHead(sheet, title){
 }
 
 function confirmClearAll(he){
-  if(!canWrite()) return;
   var n = Object.keys(state.items).length;
   openSheet(function(sheet){
     sheetHead(sheet, he ? "למחוק את כל הרשימה?" : "Remove the whole list?");
@@ -1229,6 +1249,22 @@ function confirmClearAll(he){
 function openSettings(){
   openSheet(function(sheet){
     sheetHead(sheet, "Settings");
+
+    var f = el("div","field");
+    var lab = el("label",null,"Your name");
+    lab.setAttribute("for","my-name");
+    var inp = el("input");
+    inp.type = "text"; inp.id = "my-name"; inp.name = "my-name";
+    inp.value = myName;
+    inp.placeholder = "Almog";
+    inp.setAttribute("dir","auto");
+    inp.addEventListener("change", function(){ setMyName(inp.value); });
+    inp.addEventListener("keydown", function(e){
+      if(e.key === "Enter"){ e.preventDefault(); setMyName(inp.value); closeSheet(); }
+    });
+    f.appendChild(lab); f.appendChild(inp);
+    sheet.appendChild(f);
+    sheet.appendChild(el("div","sublabel","Shown as a small initial next to anything you add, so you can tell your items apart. Stays on this device."));
 
     sheet.appendChild(el("div","sublabel","Typing an item adds it. Typing an instruction — תוריד חלב, delete all checked — does that instead."));
 
@@ -1384,48 +1420,55 @@ function banner(text){
   slot.appendChild(el("div","banner", text));
 }
 
+try{ myName = localStorage.getItem(LS_NAME) || ""; }catch(e){}
 loadLocal();
+if(myName){
+  var meChip = document.getElementById("me-chip");
+  meChip.hidden = false;
+  meChip.dataset.who = myName;
+}
 render();
 
-(async function(){
-  var cap = (window.claude && window.claude.use) ? window.claude : null;
-  if(!cap) return;
-
-  try{ userCap = await cap.use("user"); }catch(e){ userCap = null; }
-  if(userCap){
-    try{
-      var me = await userCap.me();
-      myId = me.id || "";
-      if(myId){
-        var chip = document.getElementById("me-chip");
-        chip.hidden = false;
-        chip.textContent = (me.name || "?").trim().charAt(0) || "?";
-        chip.style.background = me.color || "";
-        chip.title = (me.name || "You") + " (you)";
-        chip.dataset.uid = myId;
-      }
-    }catch(e){}
-  }
-
-  var d = null;
-  try{ d = await cap.use("db"); }catch(e){ d = null; }
-  if(!d){
-    banner("This copy saves to this device only. Open the shared link while signed in to sync with your partner.");
+(function(){
+  if(typeof firebase === "undefined" || !firebase.firestore){
+    banner("Couldn't load the sync service — this device is working on its own copy of the list.");
     return;
   }
 
-  /* Hand over from the local mirror to the shared store. */
-  db = d; local = false;
+  var fs;
+  try{
+    firebase.initializeApp(FIREBASE_CONFIG);
+    fs = firebase.firestore();
+  }catch(e){
+    banner("Couldn't reach the shared list — working on this device only.");
+    return;
+  }
 
-  if(userCap){
+  /* Keeps the list usable in a shop with no signal; writes replay on
+     reconnect. Harmless if the browser or another tab refuses it. */
+  if(typeof fs.enablePersistence === "function"){
     try{
-      var w = await userCap.can("data.write");
-      if(w === false) readOnly = true;
+      var p = fs.enablePersistence({synchronizeTabs:true});
+      if(p && p.catch) p.catch(function(){});
     }catch(e){}
   }
 
+  /* One shared list, addressed the way the rest of the code already expects:
+     db.collection("items") and db.doc("items/<id>"). */
+  var base = fs.collection("lists").doc(LIST_ID);
+  db = {
+    collection: function(name){ return base.collection(name); },
+    doc: function(path){
+      var parts = path.split("/");
+      return base.collection(parts[0]).doc(parts.slice(1).join("/"));
+    }
+  };
+  local = false;
+
   var onErr = function(e){
-    if(e && e.code === "revoked") banner("This list is no longer shared with you.");
+    banner(((e && e.code) === "permission-denied")
+      ? "This list is locked — the Firestore rules need updating."
+      : "Lost touch with the shared list. It will reconnect on its own.");
   };
 
   db.collection("items").onSnapshot(function(snap){
@@ -1459,3 +1502,6 @@ render();
 
 })();
 </script>
+
+</body>
+</html>

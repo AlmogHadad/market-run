@@ -1,0 +1,15 @@
+rules_version = '2';
+
+// Firestore denies everything that isn't explicitly matched, so pinning the
+// one list id means nothing else in the project is reachable — even though
+// the project config ships in the page source.
+//
+// Access is "whoever has the link", deliberately: no sign-in, no accounts.
+// The list id is the secret. Don't publish the URL anywhere public.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /lists/mr-x8f3qn2vk9rt5wzp/{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

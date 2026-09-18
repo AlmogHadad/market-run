@@ -1,0 +1,15 @@
+{
+  "name": "Market Run",
+  "short_name": "Market Run",
+  "description": "A shared grocery list for two.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F3F4EF",
+  "theme_color": "#2E6B4A",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
