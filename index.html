@@ -17,7 +17,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Heebo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600;700&display=swap">
 
 <style>
 /* Baseline the page depends on. [hidden] must beat display:flex — the dock,
@@ -44,8 +44,10 @@ img{max-width:100%}
   --shadow:0 1px 2px rgba(25,28,22,.06), 0 8px 24px rgba(25,28,22,.06);
   --dock-shadow:0 -1px 0 var(--line), 0 -10px 24px rgba(25,28,22,.05);
 
-  --display:"Bricolage Grotesque","Public Sans",system-ui,sans-serif;
-  --body:"Public Sans",system-ui,-apple-system,Segoe UI,sans-serif;
+  /* Bricolage and Public Sans carry no Hebrew, so Hebrew text falls through
+     to Heebo rather than whatever the device happens to have. */
+  --display:"Bricolage Grotesque","Heebo","Public Sans",system-ui,sans-serif;
+  --body:"Public Sans","Heebo",system-ui,-apple-system,Segoe UI,sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
 }
 @media (prefers-color-scheme: dark){
@@ -189,9 +191,11 @@ button{cursor:pointer;background:none;border:none}
   font-size:14px;line-height:1;flex:none;
   width:18px;text-align:center;
 }
+/* Hebrew takes no case and doesn't want tracking, so the header is set a
+   touch larger and tighter than the uppercase Latin version was. */
 .aisle-head h2{
-  font-family:var(--display);font-weight:700;font-size:12px;
-  letter-spacing:.11em;text-transform:uppercase;color:var(--ink-muted);
+  font-family:var(--display);font-weight:700;font-size:13.5px;
+  letter-spacing:.005em;color:var(--ink-muted);
 }
 .aisle-head .count{font-family:var(--mono);font-size:11px;color:var(--ink-faint);margin-left:auto}
 
@@ -418,17 +422,19 @@ var LIST_ID = "mr-x8f3qn2vk9rt5wzp";
 
 /* ---------------------------------------------------------------- data */
 
+/* Aisle keys stay stable in the database; only the labels are Hebrew, so
+   nothing already saved needs migrating. */
 var CATS = [
-  ["produce","Produce","🥬"],
-  ["bakery","Bakery","🥖"],
-  ["dairy","Dairy & Eggs","🥛"],
-  ["meat","Meat & Fish","🥩"],
-  ["frozen","Frozen","❄️"],
-  ["pantry","Pantry","🥫"],
-  ["drinks","Drinks","🧃"],
-  ["snacks","Snacks","🍫"],
-  ["household","Household","🧻"],
-  ["other","Other","📦"]
+  ["produce","פירות וירקות","🥬"],
+  ["bakery","לחם ומאפים","🥖"],
+  ["dairy","מוצרי חלב","🥛"],
+  ["meat","בשר ודגים","🥩"],
+  ["frozen","קפואים","❄️"],
+  ["pantry","מזווה","🥫"],
+  ["drinks","משקאות","🧃"],
+  ["snacks","חטיפים ומתוקים","🍫"],
+  ["household","בית וניקיון","🧻"],
+  ["other","שונות","📦"]
 ];
 
 /* Keyword map drives the aisle each item lands in. Hebrew stems are here
@@ -980,7 +986,9 @@ function aisleHead(g, left){
   var ico = el("span","ico", g.icon);
   ico.setAttribute("aria-hidden","true");
   head.appendChild(ico);
-  head.appendChild(el("h2",null,g.name));
+  var h2 = el("h2",null,g.name);
+  h2.setAttribute("dir","auto");
+  head.appendChild(h2);
   head.appendChild(el("span","count num", String(left)));
   h.appendChild(head);
   return h;
@@ -1068,7 +1076,9 @@ function openEditItem(it){
       var ico = el("span",null,c[2]);
       ico.setAttribute("aria-hidden","true");
       b.appendChild(ico);
-      b.appendChild(document.createTextNode(c[1]));
+      var lbl = el("span",null,c[1]);
+      lbl.setAttribute("dir","auto");
+      b.appendChild(lbl);
       b.dataset.sel = (c[0] === chosenCat) ? "1" : "0";
       b.addEventListener("click", function(){
         chosenCat = c[0];
