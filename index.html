@@ -1,0 +1,1461 @@
+<title>Market Run</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600;700&display=swap">
+
+<style>
+:root{
+  color-scheme: light;
+  --ground:#F3F4EF;
+  --surface:#FFFFFF;
+  --surface-2:#EAECE4;
+  --ink:#191C16;
+  --ink-muted:#5E6357;
+  --ink-faint:#8E9385;
+  --line:#DDE0D6;
+  --line-strong:#C3C8B8;
+  --accent:#2E6B4A;
+  --accent-ink:#FFFFFF;
+  --accent-soft:#E2EFE7;
+  --danger:#9B3220;
+  --shadow:0 1px 2px rgba(25,28,22,.06), 0 8px 24px rgba(25,28,22,.06);
+  --dock-shadow:0 -1px 0 var(--line), 0 -10px 24px rgba(25,28,22,.05);
+
+  --display:"Bricolage Grotesque","Public Sans",system-ui,sans-serif;
+  --body:"Public Sans",system-ui,-apple-system,Segoe UI,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --ground:#12140F;
+    --surface:#1B1E17;
+    --surface-2:#23271E;
+    --ink:#E9EBE1;
+    --ink-muted:#A0A594;
+    --ink-faint:#767B6B;
+    --line:#2C3126;
+    --line-strong:#3C4234;
+    --accent:#6FBE8E;
+    --accent-ink:#0F2218;
+    --accent-soft:#1E2E24;
+    --danger:#E0715A;
+    --shadow:0 1px 2px rgba(0,0,0,.45), 0 8px 24px rgba(0,0,0,.35);
+    --dock-shadow:0 -1px 0 var(--line), 0 -10px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --ground:#12140F;
+  --surface:#1B1E17;
+  --surface-2:#23271E;
+  --ink:#E9EBE1;
+  --ink-muted:#A0A594;
+  --ink-faint:#767B6B;
+  --line:#2C3126;
+  --line-strong:#3C4234;
+  --accent:#6FBE8E;
+  --accent-ink:#0F2218;
+  --accent-soft:#1E2E24;
+  --danger:#E0715A;
+  --shadow:0 1px 2px rgba(0,0,0,.45), 0 8px 24px rgba(0,0,0,.35);
+  --dock-shadow:0 -1px 0 var(--line), 0 -10px 24px rgba(0,0,0,.35);
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--ground);
+  color:var(--ink);
+  font-family:var(--body);
+  font-size:16px;
+  line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+  padding-block:0;
+}
+h1,h2,h3{margin:0;text-wrap:balance}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:none}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+.app{max-width:600px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;background:var(--ground)}
+
+/* ---------- header ---------- */
+.topbar{
+  position:sticky;top:0;z-index:20;
+  display:flex;align-items:center;gap:12px;
+  padding:14px 18px 12px;
+  background:var(--ground);
+  border-bottom:1px solid var(--line);
+}
+.brand{display:flex;align-items:center;gap:9px;margin-right:auto;min-width:0}
+.brand svg{width:21px;height:21px;color:var(--accent);flex:none}
+.brand h1{
+  font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:-.02em;
+  white-space:nowrap;
+}
+.icon-btn{
+  width:36px;height:36px;display:grid;place-items:center;border-radius:9px;color:var(--ink-muted);
+}
+.icon-btn:hover{background:var(--surface-2);color:var(--ink)}
+.icon-btn svg{width:20px;height:20px}
+
+.person{
+  width:26px;height:26px;border-radius:50%;flex:none;
+  display:grid;place-items:center;
+  font-family:var(--mono);font-size:11px;font-weight:600;
+  color:#fff;background:var(--ink-faint);
+  text-transform:uppercase;user-select:none;
+}
+
+/* ---------- scroll area ---------- */
+.scroll{flex:1;padding:0 18px 8px}
+
+/* ---------- add bar ---------- */
+.addwrap{position:relative;padding-top:16px}
+.addbar{display:flex;gap:8px}
+.addbar input{
+  flex:1;min-width:0;
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:11px;
+  padding:13px 14px;
+  box-shadow:var(--shadow);
+}
+.addbar input::placeholder{color:var(--ink-faint)}
+.addbar input:focus{border-color:var(--accent);outline:none}
+.addbar button{
+  background:var(--accent);color:var(--accent-ink);
+  border-radius:11px;padding:0 20px;font-weight:600;
+  box-shadow:var(--shadow);
+}
+.addbar button:hover{filter:brightness(1.06)}
+
+.suggest{
+  position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:15;
+  background:var(--surface);border:1px solid var(--line);border-radius:11px;
+  box-shadow:var(--shadow);overflow:hidden;
+}
+.suggest button{
+  display:flex;width:100%;align-items:center;gap:10px;
+  padding:11px 14px;text-align:left;border-bottom:1px solid var(--line);
+}
+.suggest button:last-child{border-bottom:none}
+.suggest button:hover,.suggest button[data-active="1"]{background:var(--accent-soft)}
+.suggest .s-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.suggest .s-sub{font-family:var(--mono);font-size:13px;color:var(--ink-muted)}
+.suggest button.s-cmd .s-name{color:var(--accent);font-weight:600}
+.suggest button:disabled{color:var(--ink-faint);cursor:default;background:none}
+.suggest button:disabled:hover{background:none}
+
+/* ---------- progress ---------- */
+.progress{margin-top:18px;display:flex;align-items:center;gap:12px}
+.pbar{flex:1;height:4px;background:var(--surface-2);border-radius:999px;overflow:hidden}
+.pbar i{display:block;height:100%;background:var(--accent);border-radius:999px;transition:width .25s ease}
+.ptext{
+  flex:none;font-family:var(--mono);font-size:11.5px;
+  color:var(--ink-faint);font-variant-numeric:tabular-nums;
+}
+
+/* ---------- list ---------- */
+.aisle{margin-top:22px}
+.aisle-head{
+  display:flex;align-items:center;gap:8px;
+  padding:0 2px 7px;border-bottom:1px solid var(--line-strong);
+}
+.aisle-head .ico{
+  font-size:14px;line-height:1;flex:none;
+  width:18px;text-align:center;
+}
+.aisle-head h2{
+  font-family:var(--display);font-weight:700;font-size:12px;
+  letter-spacing:.11em;text-transform:uppercase;color:var(--ink-muted);
+}
+.aisle-head .count{font-family:var(--mono);font-size:11px;color:var(--ink-faint);margin-left:auto}
+
+.row{
+  display:flex;align-items:center;gap:12px;
+  padding:14px 2px;
+  border-bottom:1px solid var(--line);
+}
+.row[data-done="1"] .r-name{text-decoration:line-through;color:var(--ink-faint)}
+.row[data-done="1"]{opacity:.6}
+
+.check{
+  width:30px;height:30px;flex:none;border-radius:50%;
+  border:1.75px solid var(--line-strong);background:var(--surface);
+  display:grid;place-items:center;
+}
+.check svg{width:16px;height:16px;color:var(--accent-ink);opacity:0;stroke-width:3}
+.row[data-done="1"] .check{background:var(--accent);border-color:var(--accent)}
+.row[data-done="1"] .check svg{opacity:1}
+
+.r-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;text-align:left}
+.r-name{font-weight:500;overflow-wrap:anywhere}
+.r-sub{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-faint)}
+.qty{
+  font-family:var(--mono);font-size:11.5px;font-weight:500;
+  background:var(--surface-2);color:var(--ink-muted);
+  padding:1px 6px;border-radius:3px;
+}
+.r-more{
+  width:34px;height:34px;flex:none;display:grid;place-items:center;
+  border-radius:8px;color:var(--ink-faint);
+}
+.r-more:hover{background:var(--surface-2);color:var(--ink)}
+.r-more svg{width:18px;height:18px}
+
+/* ---------- empty / done ---------- */
+.empty{
+  margin-top:26px;background:var(--surface);border:1px solid var(--line);
+  border-radius:14px;padding:22px 20px;box-shadow:var(--shadow);
+}
+.empty h2{font-family:var(--display);font-weight:700;font-size:18px;letter-spacing:-.02em}
+.empty p{margin:7px 0 0;color:var(--ink-muted);font-size:14px;max-width:46ch}
+.empty .hint{margin-top:13px;font-size:13px;color:var(--ink-faint)}
+.kbd{
+  font-family:var(--mono);font-size:12.5px;
+  background:var(--surface-2);color:var(--ink-muted);
+  padding:1px 6px;border-radius:4px;white-space:nowrap;
+  unicode-bidi:isolate;
+}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:16px}
+.chip{
+  display:flex;align-items:center;gap:6px;
+  border:1px solid var(--line-strong);border-radius:999px;
+  padding:6px 13px;font-size:13.5px;font-weight:500;color:var(--ink-muted);
+  background:var(--ground);
+}
+.chip:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+
+.donenote{margin-top:24px;text-align:center;padding:22px 16px;color:var(--ink-muted)}
+.donenote .cheer{font-size:26px;line-height:1;margin-bottom:8px}
+.donenote .big{font-family:var(--display);font-weight:700;font-size:17px;color:var(--ink)}
+.donenote p{margin:5px 0 0;font-size:13.5px}
+
+/* ---------- dock ---------- */
+.dock{
+  position:sticky;bottom:0;z-index:20;
+  padding:12px 18px calc(12px + env(safe-area-inset-bottom));
+  background:var(--ground);box-shadow:var(--dock-shadow);
+  display:flex;gap:10px;
+}
+.btn{
+  flex:1;border-radius:12px;padding:15px 18px;
+  font-weight:600;font-size:15.5px;
+  display:flex;align-items:center;justify-content:center;gap:9px;
+}
+.btn-primary{background:var(--accent);color:var(--accent-ink)}
+.btn-primary:hover{filter:brightness(1.06)}
+.btn-ghost{flex:1;border:1px solid var(--line-strong);color:var(--ink-muted)}
+.btn-ghost:hover{border-color:var(--ink-faint);color:var(--ink)}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-danger:hover{filter:brightness(1.08)}
+.btn .n{font-family:var(--mono);opacity:.75;font-weight:500}
+
+/* ---------- sheet ---------- */
+.veil{
+  position:fixed;inset:0;z-index:60;background:rgba(15,18,13,.42);
+  display:flex;align-items:flex-end;justify-content:center;padding:16px;
+}
+@media (min-width:620px){.veil{align-items:center}}
+.sheet{
+  width:100%;max-width:568px;max-height:82dvh;overflow-y:auto;
+  background:var(--ground);border:1px solid var(--line);
+  border-radius:16px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.3);
+}
+.sheet-head{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.sheet-head h2{font-family:var(--display);font-weight:800;font-size:19px;letter-spacing:-.02em;margin-right:auto}
+.sheet-row{display:flex;gap:10px;margin-top:4px}
+
+/* Sheet form — 16px inputs so iOS doesn't zoom the page on focus. */
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+.field label{
+  font-size:11px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--ink-faint);font-weight:700;
+}
+.field input{
+  background:var(--surface);border:1px solid var(--line);border-radius:11px;
+  padding:14px;font-size:16px;width:100%;
+}
+.field input:focus{border-color:var(--accent);outline:none}
+.field.narrow input{width:130px}
+.apicks{display:flex;flex-wrap:wrap;gap:7px}
+.apick{
+  display:flex;align-items:center;gap:6px;
+  border:1px solid var(--line);background:var(--surface);
+  border-radius:999px;padding:9px 13px;font-size:13.5px;color:var(--ink-muted);
+}
+.apick[data-sel="1"]{
+  border-color:var(--accent);background:var(--accent-soft);
+  color:var(--accent);font-weight:600;
+}
+.sublabel{font-size:12.5px;color:var(--ink-faint);margin:4px 0 8px}
+.linkbtn{font-size:14px;color:var(--accent);font-weight:600;padding:10px 2px;text-align:left}
+.linkbtn.danger{color:var(--danger)}
+
+/* ---------- banner + toast ---------- */
+.banner{
+  margin:14px 18px 0;padding:11px 14px;border-radius:10px;
+  background:var(--accent-soft);border:1px solid var(--line);
+  font-size:13px;color:var(--ink-muted);
+}
+
+/* View-only viewer: take the controls away rather than let writes fail. */
+body[data-ro="1"] .addwrap,
+body[data-ro="1"] .dock,
+body[data-ro="1"] .r-more{display:none}
+body[data-ro="1"] .check{opacity:.45}
+body[data-ro="1"] .check,
+body[data-ro="1"] .r-main{pointer-events:none}
+.toast{
+  position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom));
+  transform:translateX(-50%);z-index:80;
+  display:flex;align-items:center;gap:12px;
+  background:var(--ink);color:var(--ground);
+  padding:11px 18px;border-radius:999px;font-size:13.5px;font-weight:500;
+  box-shadow:0 8px 28px rgba(0,0,0,.28);max-width:calc(100vw - 32px);
+}
+.toast.with-action{padding:9px 9px 9px 18px}
+.toast .msg{flex:1;min-width:0}
+/* currentColor so the button flips with the toast between themes. */
+.toast .undo{
+  flex:none;color:inherit;font-weight:700;font-size:13px;
+  padding:9px 15px;border-radius:999px;border:1px solid currentColor;
+  opacity:.8;
+}
+.toast .undo:hover{opacity:1}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+}
+</style>
+
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M2.5 3.5h2.4l2.4 11.3h9.8l2.1-8.3H6.3"/>
+        <circle cx="9.3" cy="19.3" r="1.5"/><circle cx="16.6" cy="19.3" r="1.5"/>
+      </svg>
+      <h1>Market Run</h1>
+    </div>
+    <div class="person" id="me-chip" hidden></div>
+    <button class="icon-btn" id="btn-settings" aria-label="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+        <path d="M4 7.5h9M19 7.5h1M4 16.5h4M14 16.5h6"/>
+        <circle cx="16" cy="7.5" r="2.2"/><circle cx="11" cy="16.5" r="2.2"/>
+      </svg>
+    </button>
+  </header>
+
+  <div id="banner-slot"></div>
+
+  <main class="scroll">
+    <div class="addwrap">
+      <form class="addbar" id="add-form" autocomplete="off">
+        <input id="add-input" name="add-input" type="text" dir="auto"
+               placeholder="Add an item — try “2 milk” or “1kg tomatoes”"
+               aria-label="Add an item">
+        <button type="submit">Add</button>
+      </form>
+      <div class="suggest" id="suggest" hidden></div>
+    </div>
+
+    <div class="progress" id="progress" hidden>
+      <div class="pbar"><i id="pbar-fill" style="width:0%"></i></div>
+      <div class="ptext" id="ptext"></div>
+    </div>
+
+    <div id="list-body"></div>
+  </main>
+
+  <div class="dock" id="dock" hidden></div>
+</div>
+
+<div class="veil" id="veil" hidden>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Panel"></div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------------------------------------------------------------- data */
+
+var CATS = [
+  ["produce","Produce","🥬"],
+  ["bakery","Bakery","🥖"],
+  ["dairy","Dairy & Eggs","🥛"],
+  ["meat","Meat & Fish","🥩"],
+  ["frozen","Frozen","❄️"],
+  ["pantry","Pantry","🥫"],
+  ["drinks","Drinks","🧃"],
+  ["snacks","Snacks","🍫"],
+  ["household","Household","🧻"],
+  ["other","Other","📦"]
+];
+
+/* Keyword map drives the aisle each item lands in. Hebrew stems are here
+   because the shelf labels in the actual stores are in Hebrew. */
+var KEYWORDS = {
+  produce:["tomato","cucumber","onion","garlic","potato","carrot","lettuce","pepper","avocado","banana","apple","orange","lemon","grape","melon","watermelon","strawberr","parsley","cilantro","coriander","mint","basil","mushroom","zucchini","eggplant","spinach","broccoli","cauliflower","date","fig","pomegranate","salad","herb","ginger","celery","corn","peach","pear","plum","mango","kiwi","cabbage","radish","beet","sweet potato",
+    "עגבני","מלפפון","בצל","שום","תפוח אדמה","תפוא","גזר","חסה","פלפל","אבוקדו","בננ","תפוח","תפוז","לימון","ענב","מלון","אבטיח","תות","פטרוזיליה","כוסברה","נענע","בזיליקום","פטריו","קישוא","חציל","תרד","ברוקולי","כרובית","תמר","תאנ","רימון","סלט","זנגביל","סלרי","תירס","אפרסק","אגס","שזיף","מנגו","קיווי","כרוב","צנון","סלק","בטטה"],
+  bakery:["bread","pita","challah","bun","roll","baguette","croissant","cake","pastry","bagel","toast","tortilla","wrap","borekas",
+    "לחם","פיתה","פיתות","חלה","לחמני","בגט","קרואסון","עוגה","עוגת","בורקס","בייגל","טוסט","טורטיה","לאפה"],
+  dairy:["milk","cheese","yogurt","yoghurt","butter","cream","egg","cottage","labneh","feta","mozzarella","parmesan","sour cream","kefir","pudding",
+    "חלב","גבינ","יוגורט","חמאה","שמנת","ביצ","קוטג","לבנה","פטה","מוצרלה","פרמז","קפיר","מעדן","שוקו"],
+  meat:["chicken","beef","meat","fish","salmon","tuna","turkey","lamb","sausage","schnitzel","mince","steak","shrimp","kebab","burger","liver","breast","wings",
+    "עוף","בקר","בשר","דג","סלמון","טונה","הודו","כבש","נקניק","שניצל","טחון","סטייק","שרימפס","קבב","המבורגר","כבד","חזה","כנפיים"],
+  frozen:["frozen","ice cream","peas","fries","popsicle","sorbet",
+    "קפוא","גלידה","אפונה","צ'יפס","שלגון","סורבה"],
+  pantry:["rice","pasta","flour","sugar","salt","oil","vinegar","tahini","hummus","chickpea","lentil","bean","canned","tomato paste","spice","cumin","paprika","ketchup","mayo","mustard","cereal","oat","honey","jam","coffee","tea","couscous","quinoa","noodle","soup","sauce","spaghetti","baking","yeast","silan","halva","peanut butter","vanilla","cocoa",
+    "אורז","פסטה","קמח","סוכר","מלח","שמן","חומץ","טחינה","חומוס","עדש","שעועית","שימור","רסק","תבלין","כמון","פפריקה","קטשופ","מיונז","חרדל","דגני","שיבולת","דבש","ריבה","קפה","תה","קוסקוס","קינואה","אטריות","מרק","רוטב","שמרים","סילאן","חלווה","ממרח","וניל","קקאו","פתית"],
+  drinks:["water","juice","soda","cola","beer","wine","sparkling","lemonade","arak","vodka","whiskey","energy drink",
+    "מים","מיץ","משקה","קולה","בירה","יין","סודה","לימונד","ערק","וודקה","וויסקי"],
+  snacks:["chips","chocolate","candy","cookie","biscuit","nuts","popcorn","wafer","bamba","bisli","pretzel","cracker","granola bar","gum","almond","cashew","pistachio",
+    "חטיף","שוקולד","סוכרי","עוגי","ביסקוויט","אגוז","פופקורן","ופל","במבה","ביסלי","בייגלה","קרקר","מסטיק","שקד","קשיו","פיסטוק","גרעינים"],
+  household:["toilet paper","paper towel","soap","shampoo","detergent","dish","trash","garbage","bag","cleaner","sponge","toothpaste","toothbrush","diaper","tampon","pad","deodorant","laundry","bleach","napkin","tissue","foil","battery","light bulb","razor","conditioner",
+    "נייר טואלט","מגבות","סבון","שמפו","אבקת כביסה","כלים","זבל","אשפה","שקי","מנקה","ספוג","משחת שיניים","מברשת","חיתול","טמפון","תחבוש","דאודורנט","כביסה","אקונומיקה","מפיות","טישו","אלומיניום","סוללה","נורה","סכין גילוח","מרכך"]
+};
+
+var QUICK_ADD = [
+  ["Milk","🥛"],["Bread","🥖"],["Eggs","🥚"],["Tomatoes","🍅"],
+  ["Cucumbers","🥒"],["Chicken","🍗"],["Hummus","🫘"],["Bananas","🍌"],
+  ["Coffee","☕"],["Toilet paper","🧻"],["Olive oil","🫒"],["Yogurt","🍦"]
+];
+
+/* The add bar doubles as a command line. Verbs are matched at the start of
+   the input only, and every command needs a target after the verb — so a
+   bare "מחק" is still an eraser you want to buy. */
+var HEBREW = /[֐-׿]/;
+
+var REMOVE_VERBS = [
+  /* imperative — תוריד חלב */
+  "תוריד","תורידי","תורידו","הורד","הורידי","להוריד",
+  "תמחק","תמחקי","תמחקו","למחוק","מחק","מחקי",
+  "תוציא","תוציאי","הוצא","הוציאי","להוציא",
+  "תסיר","תסירי","הסר","הסירי","להסיר",
+  "תבטל","בטל",
+  /* noun form — מחיקת חלב, the same phrasing the app itself shows */
+  "מחיקת","מחיקה","הורדת","הורדה","הוצאת","הוצאה","הסרת","הסרה","ביטול",
+  "remove","delete","drop","clear","take off","get rid of",
+  "removing","deleting","removal of","deletion of"
+].sort(function(a,b){ return b.length - a.length; });
+
+/* Verbs that are also plausible products — never report "not on the list"
+   for these; fall through and add the item instead. הסרת שיער is a thing
+   you buy, not an instruction. */
+var AMBIGUOUS_VERBS = ["מחק","מחקי","הסרת","הסרה"];
+
+var CHECKED_TARGETS = [
+  "כל המסומנים","כל המסומן","המסומנים","המסומן","מסומנים",
+  "כל מה שסימנתי","מה שסימנתי","כל מה שסימנו","מה שסימנו",
+  "כל מה שלקחתי","מה שלקחתי","כל מה שלקחנו","מה שלקחנו",
+  "כל מה שקניתי","מה שקניתי","כל מה שקנינו","מה שקנינו",
+  "כל מה שבעגלה","מה שבעגלה","כל מה שבסל","מה שבסל","בעגלה","בסל",
+  "all checked","everything checked","the checked","checked","all the checked",
+  "all marked","everything marked","the marked","marked",
+  "what i got","everything i got","what we got","all i got",
+  "everything in the cart","all in the cart","in the cart","the cart"
+];
+
+var ALL_TARGETS = [
+  "הכל","כל הרשימה","כל הפריטים","כל המוצרים","כולם","הרשימה",
+  "all","everything","the list","the whole list","all items","everything on the list"
+];
+
+/* Trailing scope phrases that carry no meaning for the parser. */
+var SCOPE_TAILS = [
+  "מהרשימה","מרשימה","מהסל","מסל","מהעגלה","מעגלה","מהקניות",
+  "הרשימה","רשימה","מהבית"
+];
+
+/* ---------------------------------------------------------------- state */
+
+var state = {
+  items:   {},   /* id   -> item */
+  catalog: {}    /* slug -> {name, cat} — names you've added before */
+};
+
+var db = null, userCap = null, myId = null;
+var local = true;           /* true => localStorage only */
+var readOnly = false;
+var suggestIdx = -1, suggestList = [];
+
+var LS = "marketrun.v1";
+
+/* ---------------------------------------------------------------- utils */
+
+function el(tag, cls, text){
+  var n = document.createElement(tag);
+  if(cls) n.className = cls;
+  if(text != null) n.textContent = text;
+  return n;
+}
+function svg(paths, sw){
+  var s = document.createElementNS("http://www.w3.org/2000/svg","svg");
+  s.setAttribute("viewBox","0 0 24 24");
+  s.setAttribute("fill","none");
+  s.setAttribute("stroke","currentColor");
+  s.setAttribute("stroke-width", sw || "2");
+  s.setAttribute("stroke-linecap","round");
+  s.setAttribute("stroke-linejoin","round");
+  s.setAttribute("aria-hidden","true");
+  paths.forEach(function(d){
+    var p = document.createElementNS("http://www.w3.org/2000/svg","path");
+    p.setAttribute("d", d); s.appendChild(p);
+  });
+  return s;
+}
+function slug(name){
+  return String(name).toLowerCase().trim().replace(/\s+/g," ")
+    .replace(/[^\p{L}\p{N} ]/gu,"").replace(/ /g,"-").slice(0,120) || "item";
+}
+function uid(){
+  return Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+}
+
+/* Hebrew final forms are the same letters: מלפפון and מלפפונים must match. */
+function heNorm(s){
+  return s.replace(/ך/g,"כ").replace(/ם/g,"מ").replace(/ן/g,"נ")
+          .replace(/ף/g,"פ").replace(/ץ/g,"צ");
+}
+function matchKey(s){
+  return heNorm(slug(s)).replace(/(יות|ים|ות)$/,"");
+}
+
+/* A Latin keyword must start a word, so "toilet paper" isn't cooking oil.
+   Trailing letters are fine, so "cucumber" still catches "cucumbers". */
+function wordHit(hay, needle){
+  var i = hay.indexOf(needle);
+  while(i !== -1){
+    if(i === 0 || !/[a-z]/.test(hay.charAt(i-1))) return true;
+    i = hay.indexOf(needle, i + 1);
+  }
+  return false;
+}
+
+/* Longest matching keyword wins, so "eggplant" beats "egg" and
+   "ice cream" beats "cream" without depending on aisle order. */
+function guessCat(name){
+  var s = heNorm(String(name).toLowerCase());
+  var bestKey = "other", bestLen = 0;
+  for(var i=0;i<CATS.length;i++){
+    var key = CATS[i][0], words = KEYWORDS[key] || [];
+    for(var j=0;j<words.length;j++){
+      var w = heNorm(words[j]);
+      if(w.length <= bestLen) continue;
+      var hit = HEBREW.test(w) ? (s.indexOf(w) !== -1) : wordHit(s, w);
+      if(hit){ bestKey = key; bestLen = w.length; }
+    }
+  }
+  return bestKey;
+}
+function catIcon(key){
+  for(var i=0;i<CATS.length;i++){ if(CATS[i][0] === key) return CATS[i][2]; }
+  return "📦";
+}
+
+/* "2 milk", "milk x2", "1kg tomatoes" -> {name, qty} */
+function parseEntry(raw){
+  var s = String(raw).trim().replace(/\s+/g," ");
+  var qty = "";
+  var m = s.match(/\s*[x×*]\s*(\d+(?:\.\d+)?)$/i);
+  if(m){ qty = m[1]; s = s.slice(0, m.index).trim(); }
+  if(!qty){
+    var m2 = s.match(/^(\d+(?:[.,]\d+)?)\s*(kg|kgs|g|gr|gram|l|lt|ml|pack|packs|ק"ג|קג|גרם|ליטר)?\s+(.+)$/i);
+    if(m2 && m2[3]){
+      qty = m2[1].replace(",",".") + (m2[2] ? m2[2].toLowerCase() : "");
+      s = m2[3].trim();
+    }
+  }
+  return {name:s, qty:qty};
+}
+function multiplier(qty){
+  var q = String(qty || "").trim();
+  return /^\d+(\.\d+)?$/.test(q) ? parseFloat(q) : 1;
+}
+
+function sortedItems(){
+  var arr = Object.keys(state.items).map(function(k){ return state.items[k]; });
+  arr.sort(function(a,b){ return (a.ts||0) - (b.ts||0); });
+  return arr;
+}
+function doneCount(){
+  return Object.keys(state.items).filter(function(k){ return state.items[k].done; }).length;
+}
+function groupByAisle(arr){
+  var groups = [];
+  CATS.forEach(function(c){
+    var of = arr.filter(function(it){ return (it.cat || "other") === c[0]; });
+    if(of.length) groups.push({key:c[0], name:c[1], icon:c[2], items:of});
+  });
+  return groups;
+}
+
+/* Items on the list whose name the user could plausibly have meant. */
+function findItems(q){
+  var arr = sortedItems();
+  var qs = slug(q), qk = matchKey(q);
+  if(!qk) return [];
+  var exact = arr.filter(function(it){ return slug(it.name) === qs; });
+  if(exact.length) return exact;
+  var keyed = arr.filter(function(it){ return matchKey(it.name) === qk; });
+  if(keyed.length) return keyed;
+  return arr.filter(function(it){
+    var k = matchKey(it.name);
+    return k && (k.indexOf(qk) !== -1 || qk.indexOf(k) !== -1);
+  });
+}
+
+/* "תוריד מלפפון מהרשימה" -> {action:"removeItem", target:"מלפפון"} */
+function parseCommand(raw){
+  var s = String(raw).trim().replace(/\s+/g," ");
+  if(!s) return null;
+  var low = s.toLowerCase();
+
+  var verb = null;
+  for(var i=0;i<REMOVE_VERBS.length;i++){
+    var v = REMOVE_VERBS[i];
+    if(low.indexOf(v + " ") === 0){ verb = v; break; }
+  }
+  if(!verb) return null;
+
+  var rest = s.slice(verb.length).trim();
+  rest = rest.replace(/^(את|של|the|of)\s+/i,"").trim();
+  for(var j=0;j<SCOPE_TAILS.length;j++){
+    var tail = SCOPE_TAILS[j];
+    if(rest.length > tail.length && rest.slice(-tail.length) === tail){
+      rest = rest.slice(0, -tail.length).trim();
+      break;
+    }
+  }
+  rest = rest.replace(/\s+from\s+(the\s+)?(list|cart|basket)$/i,"").trim();
+  if(!rest) return null;
+
+  var he = HEBREW.test(s);
+  var t = rest.toLowerCase();
+  if(CHECKED_TARGETS.indexOf(t) !== -1) return {action:"clearChecked", he:he};
+  if(ALL_TARGETS.indexOf(t) !== -1)     return {action:"clearAll", he:he};
+
+  /* An ambiguous verb with nothing to remove is just an item being added. */
+  if(AMBIGUOUS_VERBS.indexOf(verb) !== -1 && !findItems(rest).length) return null;
+
+  return {action:"removeItem", target:rest, he:he};
+}
+
+/* What the command would do, as rows for the suggestion box. */
+function commandEntries(cmd){
+  var he = cmd.he;
+
+  if(cmd.action === "clearChecked"){
+    var n = doneCount();
+    if(!n) return [{label: he ? "אין פריטים מסומנים" : "Nothing is checked off", muted:true}];
+    return [{
+      cmd:true,
+      label: he ? ("מחיקת " + (n === 1 ? "הפריט המסומן" : n + " פריטים מסומנים"))
+                : ("Remove " + n + " checked item" + (n>1?"s":"")),
+      run: function(){ clearChecked(he); }
+    }];
+  }
+
+  if(cmd.action === "clearAll"){
+    var t = Object.keys(state.items).length;
+    if(!t) return [{label: he ? "הרשימה כבר ריקה" : "The list is already empty", muted:true}];
+    return [{
+      cmd:true,
+      label: he ? (t === 1 ? "מחיקת הפריט האחרון" : "מחיקת כל " + t + " הפריטים")
+                : ("Remove all " + t + " item" + (t>1?"s":"")),
+      run: function(){ confirmClearAll(he); }
+    }];
+  }
+
+  var hits = findItems(cmd.target);
+  if(!hits.length){
+    return [{label: he ? ("“" + cmd.target + "” לא נמצא ברשימה")
+                       : ("“" + cmd.target + "” isn't on the list"), muted:true}];
+  }
+  return hits.slice(0,5).map(function(it){
+    return {
+      cmd:true,
+      label: (he ? "מחיקת " : "Remove ") + it.name,
+      sub: it.qty ? (/^\d+(\.\d+)?$/.test(it.qty) ? "×" + it.qty : it.qty) : "",
+      run: function(){ removeItemRec(it.id, he); }
+    };
+  });
+}
+
+/* ---------------------------------------------------------------- toast */
+
+var toastTimer = null;
+function flash(msg, action){
+  var old = document.querySelector(".toast");
+  if(old) old.remove();
+
+  var t = el("div", action ? "toast with-action" : "toast");
+  t.appendChild(el("span","msg", msg));
+  if(action){
+    var b = el("button","undo", action.label);
+    b.type = "button";
+    b.addEventListener("click", function(){
+      clearTimeout(toastTimer);
+      t.remove();
+      action.run();
+    });
+    t.appendChild(b);
+  }
+  document.body.appendChild(t);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.remove(); }, action ? 7000 : 2600);
+}
+
+/* A removal stays undoable for as long as its toast is up. */
+function offerUndo(items, msg, he){
+  if(!items.length) return;
+  flash(msg, {label: he ? "בטל" : "Undo", run: function(){ restore(items, he); }});
+}
+
+async function restore(items, he){
+  items.forEach(function(it){ state.items[it.id] = it; });
+  render();
+  if(local){ saveLocal(); }
+  else {
+    for(var i=0;i<items.length;i++){
+      try{ await db.doc("items/" + items[i].id).set(items[i]); }
+      catch(e){ handleWriteError(e); return; }
+    }
+  }
+  flash(he ? (items.length === 1 ? "הוחזר לרשימה." : "הוחזרו " + items.length + " פריטים.")
+           : (items.length === 1 ? "Put back." : items.length + " items put back."));
+}
+
+/* ------------------------------------------------------------ persistence */
+
+function saveLocal(){
+  try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){}
+}
+function loadLocal(){
+  try{
+    var raw = localStorage.getItem(LS);
+    if(!raw) return;
+    var d = JSON.parse(raw);
+    if(d && typeof d === "object"){
+      state.items   = d.items   || {};
+      state.catalog = d.catalog || {};
+    }
+  }catch(e){}
+}
+
+function handleWriteError(e){
+  var code = e && e.code;
+  if(code === "invalid_argument"){
+    readOnly = true;
+    flash("You have view-only access to this list.");
+    render();
+  } else if(code === "quota_exceeded"){
+    flash("This list is full — clear some items first.");
+  } else if(code === "resource_exhausted"){
+    flash("Too many changes at once — give it a second.");
+  } else {
+    flash("Couldn't save that. Check your connection.");
+  }
+}
+
+async function writeItem(item){
+  state.items[item.id] = item;
+  render();
+  if(local){ saveLocal(); return; }
+  try{ await db.doc("items/" + item.id).set(item); }
+  catch(e){ handleWriteError(e); }
+}
+async function removeItemRec(id, he){
+  if(!canWrite()) return;
+  var item = state.items[id];
+  if(!item) return;
+  delete state.items[id];
+  render();
+  offerUndo([item], he ? (item.name + " הוסר.") : (item.name + " removed."), he);
+  if(local){ saveLocal(); return; }
+  try{ await db.doc("items/" + id).delete(); }
+  catch(e){ handleWriteError(e); }
+}
+async function writeCatalog(sl, entry){
+  state.catalog[sl] = entry;
+  if(local){ saveLocal(); return; }
+  try{ await db.doc("catalog/" + sl).set(entry); }
+  catch(e){ handleWriteError(e); }
+}
+async function removeCatalog(sl){
+  delete state.catalog[sl];
+  if(local){ saveLocal(); return; }
+  try{ await db.doc("catalog/" + sl).delete(); }catch(e){}
+}
+async function deleteIds(ids){
+  ids.forEach(function(id){ delete state.items[id]; });
+  render();
+  if(local){ saveLocal(); return; }
+  for(var i=0;i<ids.length;i++){
+    try{ await db.doc("items/" + ids[i]).delete(); }
+    catch(e){ handleWriteError(e); break; }
+  }
+}
+
+/* --------------------------------------------------------------- actions */
+
+/* Every mutation funnels through here, so a view-only viewer gets one clear
+   answer instead of a write that quietly fails. */
+function canWrite(){
+  if(!readOnly) return true;
+  flash("You can follow this list, but not change it.");
+  return false;
+}
+
+function addItem(rawName, presetQty){
+  if(!canWrite()) return;
+  var parsed = parseEntry(rawName);
+  if(!parsed.name) return;
+  var sl = slug(parsed.name);
+  var known = state.catalog[sl];
+
+  /* Same item already on the list? Bump it rather than duplicating. */
+  var existing = null;
+  Object.keys(state.items).forEach(function(k){
+    if(slug(state.items[k].name) === sl) existing = state.items[k];
+  });
+  if(existing){
+    var next = Object.assign({}, existing, {
+      qty: String(multiplier(existing.qty) + multiplier(presetQty || parsed.qty || "1")),
+      done: false
+    });
+    writeItem(next);
+    flash("Already on the list — now " + next.qty + ".");
+    return;
+  }
+
+  var cat = (known && known.cat) || guessCat(parsed.name);
+  writeItem({
+    id: uid(),
+    name: known ? known.name : parsed.name,
+    qty: presetQty || parsed.qty || "",
+    cat: cat,
+    addedBy: myId || "",
+    done: false,
+    ts: Date.now()
+  });
+
+  /* Remember the name so it autocompletes next time. */
+  if(!known) writeCatalog(sl, {name: parsed.name, cat: cat});
+}
+
+function toggleDone(id){
+  if(!canWrite()) return;
+  var it = state.items[id];
+  if(!it) return;
+  writeItem(Object.assign({}, it, {done: !it.done}));
+}
+
+function clearChecked(he){
+  if(!canWrite()) return;
+  var done = Object.keys(state.items).filter(function(k){ return state.items[k].done; });
+  if(!done.length){
+    flash(he ? "עוד לא סימנת כלום." : "Nothing checked off yet.");
+    return;
+  }
+  var removed = done.map(function(k){ return state.items[k]; });
+  deleteIds(done);
+  offerUndo(removed,
+    he ? (removed.length === 1 ? "נמחק פריט אחד." : "נמחקו " + removed.length + " פריטים.")
+       : ("Cleared " + removed.length + " item" + (removed.length>1?"s":"") + "."), he);
+}
+
+/* Renaming a mistyped item also drops the typo from autocomplete. */
+function renameItem(id, newName, newQty, cat){
+  if(!canWrite()) return;
+  var cur = state.items[id];
+  if(!cur){ flash("That item is no longer on the list."); return; }
+
+  var oldSlug = slug(cur.name), newSlug = slug(newName);
+
+  /* Fixing a typo onto a name that's already listed merges the two rather
+     than leaving a duplicate behind. */
+  var twin = null;
+  Object.keys(state.items).forEach(function(k){
+    if(k !== id && slug(state.items[k].name) === newSlug) twin = state.items[k];
+  });
+  if(twin){
+    writeItem(Object.assign({}, twin, {
+      name: newName,
+      qty: String(multiplier(twin.qty) + multiplier(newQty || "1")),
+      cat: cat,
+      done: false
+    }));
+    deleteIds([id]);
+    flash("Merged into " + newName + ".");
+    return;
+  }
+
+  writeItem(Object.assign({}, cur, {name:newName, qty:newQty, cat:cat}));
+
+  if(newSlug !== oldSlug){
+    var stillUsed = Object.keys(state.items).some(function(k){
+      return slug(state.items[k].name) === oldSlug;
+    });
+    if(!stillUsed && state.catalog[oldSlug]) removeCatalog(oldSlug);
+  }
+  writeCatalog(newSlug, {name:newName, cat:cat});
+}
+
+/* ---------------------------------------------------------------- render */
+
+function render(){
+  document.body.dataset.ro = readOnly ? "1" : "0";
+  if(readOnly && !document.querySelector(".banner")){
+    banner("You can follow this list, but only people with edit access can change it.");
+  }
+  renderProgress();
+  renderList();
+  renderDock();
+  paintPeople();
+}
+
+function renderProgress(){
+  var total = Object.keys(state.items).length;
+  var got = doneCount();
+  var wrap = document.getElementById("progress");
+
+  /* Only worth showing once a run is under way. */
+  wrap.hidden = !got;
+  if(!got) return;
+
+  document.getElementById("pbar-fill").style.width =
+    Math.round(got / total * 100) + "%";
+  document.getElementById("ptext").textContent =
+    got + " got · " + (total - got) + " left";
+}
+
+function renderList(){
+  var body = document.getElementById("list-body");
+  body.textContent = "";
+  var items = sortedItems();
+
+  if(!items.length){ body.appendChild(emptyState()); return; }
+
+  groupByAisle(items).forEach(function(g){
+    /* unchecked first inside each aisle, so what's left floats to the top */
+    var ordered = g.items.slice().sort(function(a,b){ return (a.done?1:0) - (b.done?1:0); });
+    var left = g.items.filter(function(i){ return !i.done; }).length;
+    body.appendChild(aisleHead(g, left));
+    ordered.forEach(function(it){ body.appendChild(itemRow(it)); });
+  });
+
+  if(doneCount() === items.length){
+    var done = el("div","donenote");
+    done.appendChild(el("div","cheer","✅"));
+    done.appendChild(el("div","big","That's everything."));
+    done.appendChild(el("p",null,"Clear the cart below to empty the list."));
+    body.appendChild(done);
+  }
+}
+
+function aisleHead(g, left){
+  var h = el("div","aisle");
+  var head = el("div","aisle-head");
+  var ico = el("span","ico", g.icon);
+  ico.setAttribute("aria-hidden","true");
+  head.appendChild(ico);
+  head.appendChild(el("h2",null,g.name));
+  head.appendChild(el("span","count num", String(left)));
+  h.appendChild(head);
+  return h;
+}
+
+function itemRow(it){
+  var row = el("div","row");
+  row.dataset.done = it.done ? "1" : "0";
+
+  var check = el("button","check");
+  check.type = "button";
+  check.setAttribute("aria-pressed", it.done ? "true" : "false");
+  check.setAttribute("aria-label", (it.done ? "Uncheck " : "Check off ") + it.name);
+  check.appendChild(svg(["M4.5 12.5l5 5 10-11"], "3"));
+  check.addEventListener("click", function(){ toggleDone(it.id); });
+  row.appendChild(check);
+
+  var main = el("button","r-main");
+  main.type = "button";
+  var nm = el("div","r-name", it.name);
+  nm.setAttribute("dir","auto");
+  main.appendChild(nm);
+
+  var sub = el("div","r-sub");
+  if(it.qty) sub.appendChild(el("span","qty", it.qty));
+  if(it.addedBy){
+    var dot = el("span","person");
+    dot.style.width = "16px"; dot.style.height = "16px"; dot.style.fontSize = "8px";
+    dot.dataset.uid = it.addedBy;
+    sub.appendChild(dot);
+  }
+  if(sub.childNodes.length) main.appendChild(sub);
+
+  main.addEventListener("click", function(){ toggleDone(it.id); });
+  row.appendChild(main);
+
+  var more = el("button","r-more");
+  more.type = "button";
+  more.setAttribute("aria-label","Edit " + it.name);
+  more.appendChild(svg(["M12 5.4h.01","M12 12h.01","M12 18.6h.01"], "2.6"));
+  more.addEventListener("click", function(ev){
+    ev.stopPropagation();
+    openEditItem(it);
+  });
+  row.appendChild(more);
+
+  return row;
+}
+
+function openEditItem(it){
+  var chosenCat = it.cat || "other";
+  var catTouched = false;
+
+  openSheet(function(sheet){
+    sheetHead(sheet, "Edit item");
+
+    var f1 = el("div","field");
+    var l1 = el("label",null,"Name");
+    l1.setAttribute("for","edit-name");
+    var i1 = el("input");
+    i1.type = "text"; i1.id = "edit-name"; i1.name = "edit-name";
+    i1.value = it.name;
+    i1.setAttribute("dir","auto");
+    i1.setAttribute("autocomplete","off");
+    i1.setAttribute("autocapitalize","none");
+    f1.appendChild(l1); f1.appendChild(i1);
+    sheet.appendChild(f1);
+
+    var f2 = el("div","field narrow");
+    var l2 = el("label",null,"Quantity");
+    l2.setAttribute("for","edit-qty");
+    var i2 = el("input");
+    i2.type = "text"; i2.id = "edit-qty"; i2.name = "edit-qty";
+    i2.value = it.qty || "";
+    i2.placeholder = "2 · 1kg";
+    f2.appendChild(l2); f2.appendChild(i2);
+    sheet.appendChild(f2);
+
+    var f3 = el("div","field");
+    f3.appendChild(el("label",null,"Aisle"));
+    var picks = el("div","apicks");
+    CATS.forEach(function(c){
+      var b = el("button","apick");
+      b.type = "button";
+      var ico = el("span",null,c[2]);
+      ico.setAttribute("aria-hidden","true");
+      b.appendChild(ico);
+      b.appendChild(document.createTextNode(c[1]));
+      b.dataset.sel = (c[0] === chosenCat) ? "1" : "0";
+      b.addEventListener("click", function(){
+        chosenCat = c[0];
+        catTouched = true;
+        Array.prototype.forEach.call(picks.children, function(x){ x.dataset.sel = "0"; });
+        b.dataset.sel = "1";
+      });
+      picks.appendChild(b);
+    });
+    f3.appendChild(picks);
+    sheet.appendChild(f3);
+
+    var save = function(){
+      var newName = i1.value.trim();
+      if(!newName){ flash("Give the item a name."); i1.focus(); return; }
+      var renamed = newName !== it.name;
+      /* A fixed typo should land in the right aisle unless you picked one. */
+      var cat = catTouched ? chosenCat : (renamed ? guessCat(newName) : (it.cat || "other"));
+      closeSheet();
+      renameItem(it.id, newName, i2.value.trim(), cat);
+    };
+    var onEnter = function(e){ if(e.key === "Enter"){ e.preventDefault(); save(); } };
+    i1.addEventListener("keydown", onEnter);
+    i2.addEventListener("keydown", onEnter);
+
+    var row = el("div","sheet-row");
+    var cancel = el("button","btn btn-ghost","Cancel");
+    cancel.type = "button";
+    cancel.addEventListener("click", closeSheet);
+    var go = el("button","btn btn-primary","Save");
+    go.type = "button";
+    go.addEventListener("click", save);
+    row.appendChild(cancel); row.appendChild(go);
+    sheet.appendChild(row);
+
+    var del = el("button","linkbtn danger","Remove this item");
+    del.type = "button";
+    del.addEventListener("click", function(){
+      closeSheet();
+      removeItemRec(it.id);
+    });
+    sheet.appendChild(del);
+
+    setTimeout(function(){ i1.focus(); i1.select(); }, 30);
+  }, "Edit item");
+}
+
+function emptyState(){
+  var e = el("div","empty");
+  e.appendChild(el("h2",null,"Nothing on the list."));
+  e.appendChild(el("p",null,"Add what you need above — whatever either of you adds shows up on both phones. At the store, tap an item to drop it in the cart; what's still missing stays at the top of each aisle."));
+
+  var hint = el("p","hint");
+  hint.appendChild(document.createTextNode("The same box takes instructions, not just items — "));
+  var ex1 = el("span","kbd","תוריד מלפפון מהרשימה");
+  ex1.setAttribute("dir","rtl");
+  hint.appendChild(ex1);
+  hint.appendChild(document.createTextNode(" or "));
+  hint.appendChild(el("span","kbd","delete all checked"));
+  hint.appendChild(document.createTextNode("."));
+  e.appendChild(hint);
+
+  var chips = el("div","chips");
+  QUICK_ADD.forEach(function(q){
+    var c = el("button","chip");
+    c.type = "button";
+    var ico = el("span",null,q[1]);
+    ico.setAttribute("aria-hidden","true");
+    c.appendChild(ico);
+    c.appendChild(document.createTextNode(q[0]));
+    c.addEventListener("click", function(){ addItem(q[0]); });
+    chips.appendChild(c);
+  });
+  e.appendChild(chips);
+  return e;
+}
+
+/* The dock carries one action, and only once there's something to clear. */
+function renderDock(){
+  var dock = document.getElementById("dock");
+  var got = doneCount();
+  dock.hidden = !got;
+  dock.textContent = "";
+  if(!got) return;
+
+  var fin = el("button","btn btn-primary");
+  fin.type = "button";
+  fin.appendChild(document.createTextNode("Clear what I got"));
+  fin.appendChild(el("span","n num", String(got)));
+  fin.addEventListener("click", function(){ clearChecked(false); });
+  dock.appendChild(fin);
+}
+
+/* Names come from other people — always set via textContent. */
+async function paintPeople(){
+  var nodes = Array.prototype.slice.call(document.querySelectorAll("[data-uid]"));
+  var ids = {};
+  nodes.forEach(function(n){ if(n.dataset.uid) ids[n.dataset.uid] = 1; });
+  var list = Object.keys(ids);
+
+  var distinct = {};
+  sortedItems().forEach(function(i){ if(i.addedBy) distinct[i.addedBy] = 1; });
+  var many = Object.keys(distinct).length > 1;
+  nodes.forEach(function(n){
+    if(n.id !== "me-chip") n.hidden = !many;
+  });
+
+  if(!userCap || !list.length) return;
+  var ps;
+  try{ ps = await userCap.profiles(list); }catch(e){ return; }
+  nodes.forEach(function(n){
+    var p = ps[n.dataset.uid];
+    if(!p) return;
+    var nm = p.name || "Someone";
+    n.textContent = nm.trim().charAt(0) || "?";
+    n.style.background = p.color || "";
+    n.title = p.isMe ? nm + " (you)" : nm;
+  });
+}
+
+/* ---------------------------------------------------------------- sheets */
+
+function openSheet(build, label){
+  var veil  = document.getElementById("veil");
+  var sheet = document.getElementById("sheet");
+  sheet.textContent = "";
+  sheet.setAttribute("aria-label", label);
+  build(sheet);
+  veil.hidden = false;
+}
+function closeSheet(){ document.getElementById("veil").hidden = true; }
+
+function sheetHead(sheet, title){
+  var h = el("div","sheet-head");
+  h.appendChild(el("h2",null,title));
+  var x = el("button","icon-btn");
+  x.type = "button";
+  x.setAttribute("aria-label","Close");
+  x.appendChild(svg(["M6 6l12 12M18 6L6 18"],"2"));
+  x.addEventListener("click", closeSheet);
+  h.appendChild(x);
+  sheet.appendChild(h);
+}
+
+function confirmClearAll(he){
+  if(!canWrite()) return;
+  var n = Object.keys(state.items).length;
+  openSheet(function(sheet){
+    sheetHead(sheet, he ? "למחוק את כל הרשימה?" : "Remove the whole list?");
+    var p = el("p",null, he ? ((n === 1 ? "פריט אחד יימחק" : n + " פריטים יימחקו") + " לשניכם.")
+                            : (n + " item" + (n>1?"s":"") + " will be removed, for both of you."));
+    p.style.cssText = "margin:0 0 18px;color:var(--ink-muted);font-size:14px";
+    sheet.appendChild(p);
+
+    var row = el("div","sheet-row");
+    var cancel = el("button","btn btn-ghost", he ? "ביטול" : "Cancel");
+    cancel.type = "button";
+    cancel.addEventListener("click", closeSheet);
+    var go = el("button","btn btn-danger", he ? "מחק הכל" : "Remove all");
+    go.type = "button";
+    go.addEventListener("click", function(){
+      closeSheet();
+      var ids = Object.keys(state.items);
+      var removed = ids.map(function(k){ return state.items[k]; });
+      deleteIds(ids);
+      offerUndo(removed, he ? "הרשימה נוקתה." : "List cleared.", he);
+    });
+    row.appendChild(cancel);
+    row.appendChild(go);
+    sheet.appendChild(row);
+  }, he ? "אישור מחיקה" : "Confirm clearing the list");
+}
+
+function openSettings(){
+  openSheet(function(sheet){
+    sheetHead(sheet, "Settings");
+
+    sheet.appendChild(el("div","sublabel","Typing an item adds it. Typing an instruction — תוריד חלב, delete all checked — does that instead."));
+
+    var clear = el("button","linkbtn danger","Remove every item from the list");
+    clear.type = "button";
+    clear.addEventListener("click", function(){
+      if(!Object.keys(state.items).length){ flash("The list is already empty."); return; }
+      confirmClearAll(false);
+    });
+    sheet.appendChild(clear);
+
+    var note = el("p",null,"Items you've added before are remembered by name, so they autocomplete next time.");
+    note.style.cssText = "margin:10px 0 0;font-size:12.5px;color:var(--ink-faint)";
+    sheet.appendChild(note);
+  }, "Settings");
+}
+
+/* -------------------------------------------------------------- suggest */
+
+/* Names you've added before, for plain-text autocomplete. */
+function catalogEntries(raw){
+  var query = raw.toLowerCase();
+  var onList = {};
+  Object.keys(state.items).forEach(function(k){ onList[slug(state.items[k].name)] = 1; });
+
+  return Object.keys(state.catalog)
+    .map(function(k){ return state.catalog[k]; })
+    .filter(function(c){
+      return c && c.name && !onList[slug(c.name)] &&
+             c.name.toLowerCase().indexOf(query) !== -1;
+    })
+    .slice(0,5)
+    .map(function(c){
+      return {label:c.name, sub:catIcon(c.cat), run:function(){ addItem(c.name); }};
+    });
+}
+
+function closeSuggest(){
+  document.getElementById("suggest").hidden = true;
+  suggestList = []; suggestIdx = -1;
+}
+
+function renderSuggest(q){
+  var box = document.getElementById("suggest");
+  box.textContent = "";
+  suggestList = [];
+  suggestIdx = -1;
+
+  var raw = String(q).trim();
+  if(!raw){ box.hidden = true; return; }
+
+  var cmd = parseCommand(raw);
+  var entries = cmd ? commandEntries(cmd) : catalogEntries(raw);
+  if(!entries.length){ box.hidden = true; return; }
+  suggestList = entries;
+
+  entries.forEach(function(e, i){
+    var b = el("button");
+    b.type = "button";
+    b.dataset.i = String(i);
+    if(e.cmd) b.className = "s-cmd";
+    if(e.muted) b.disabled = true;
+    var n = el("span","s-name", e.label);
+    n.setAttribute("dir","auto");
+    b.appendChild(n);
+    if(e.sub) b.appendChild(el("span","s-sub", e.sub));
+    b.addEventListener("click", function(){
+      if(e.muted) return;
+      e.run();
+      document.getElementById("add-input").value = "";
+      closeSuggest();
+    });
+    box.appendChild(b);
+  });
+  box.hidden = false;
+}
+
+function moveSuggest(d){
+  var box = document.getElementById("suggest");
+  if(box.hidden || !suggestList.length) return false;
+  var usable = suggestList.filter(function(x){ return !x.muted; }).length;
+  if(!usable) return false;
+  var i = (suggestIdx === -1 && d === -1) ? 0 : suggestIdx;
+  do { i = (i + d + suggestList.length) % suggestList.length; }
+  while(suggestList[i].muted);
+  suggestIdx = i;
+  Array.prototype.forEach.call(box.children, function(c, k){
+    c.dataset.active = (k === suggestIdx) ? "1" : "0";
+  });
+  return true;
+}
+
+/* ----------------------------------------------------------------- wire */
+
+document.getElementById("add-form").addEventListener("submit", function(e){
+  e.preventDefault();
+  var input = document.getElementById("add-input");
+  var raw = input.value.trim();
+  if(!raw) return;
+
+  var picked = (suggestIdx >= 0) ? suggestList[suggestIdx] : null;
+  if(picked && !picked.muted){
+    picked.run();
+  } else {
+    var cmd = parseCommand(raw);
+    if(cmd){
+      var entries = commandEntries(cmd);
+      var live = entries.filter(function(x){ return !x.muted; });
+      if(live.length === 1){
+        live[0].run();
+      } else if(!live.length){
+        /* Keep what they typed so a typo is one edit away from working. */
+        flash(entries[0] ? entries[0].label : (cmd.he ? "לא נמצא" : "Not found"));
+        return;
+      } else {
+        flash(cmd.he ? "יש כמה כאלה — בחרו אחד" : "Several match — pick one");
+        return;
+      }
+    } else {
+      addItem(raw);
+    }
+  }
+  input.value = "";
+  closeSuggest();
+  input.focus();
+});
+
+document.getElementById("add-input").addEventListener("input", function(e){
+  renderSuggest(e.target.value);
+});
+document.getElementById("add-input").addEventListener("keydown", function(e){
+  if(e.key === "ArrowDown"){ if(moveSuggest(1)) e.preventDefault(); }
+  else if(e.key === "ArrowUp"){ if(moveSuggest(-1)) e.preventDefault(); }
+  else if(e.key === "Escape"){ closeSuggest(); }
+});
+document.addEventListener("click", function(e){
+  var box = document.getElementById("suggest");
+  if(!box.hidden && !e.target.closest(".addwrap")) closeSuggest();
+});
+document.getElementById("btn-settings").addEventListener("click", openSettings);
+document.getElementById("veil").addEventListener("click", function(e){
+  if(e.target.id === "veil") closeSheet();
+});
+document.addEventListener("keydown", function(e){
+  if(e.key === "Escape" && !document.getElementById("veil").hidden) closeSheet();
+});
+
+/* ----------------------------------------------------------------- boot */
+
+function banner(text){
+  var slot = document.getElementById("banner-slot");
+  slot.textContent = "";
+  slot.appendChild(el("div","banner", text));
+}
+
+loadLocal();
+render();
+
+(async function(){
+  var cap = (window.claude && window.claude.use) ? window.claude : null;
+  if(!cap) return;
+
+  try{ userCap = await cap.use("user"); }catch(e){ userCap = null; }
+  if(userCap){
+    try{
+      var me = await userCap.me();
+      myId = me.id || "";
+      if(myId){
+        var chip = document.getElementById("me-chip");
+        chip.hidden = false;
+        chip.textContent = (me.name || "?").trim().charAt(0) || "?";
+        chip.style.background = me.color || "";
+        chip.title = (me.name || "You") + " (you)";
+        chip.dataset.uid = myId;
+      }
+    }catch(e){}
+  }
+
+  var d = null;
+  try{ d = await cap.use("db"); }catch(e){ d = null; }
+  if(!d){
+    banner("This copy saves to this device only. Open the shared link while signed in to sync with your partner.");
+    return;
+  }
+
+  /* Hand over from the local mirror to the shared store. */
+  db = d; local = false;
+
+  if(userCap){
+    try{
+      var w = await userCap.can("data.write");
+      if(w === false) readOnly = true;
+    }catch(e){}
+  }
+
+  var onErr = function(e){
+    if(e && e.code === "revoked") banner("This list is no longer shared with you.");
+  };
+
+  db.collection("items").onSnapshot(function(snap){
+    var next = {};
+    snap.docs.forEach(function(doc){
+      var v = doc.data() || {};
+      next[doc.id] = {
+        id: doc.id,
+        name: String(v.name || ""),
+        qty: String(v.qty || ""),
+        cat: String(v.cat || "other"),
+        addedBy: String(v.addedBy || ""),
+        done: !!v.done,
+        ts: Number(v.ts) || 0
+      };
+    });
+    state.items = next;
+    render();
+  }, onErr);
+
+  db.collection("catalog").onSnapshot(function(snap){
+    var next = {};
+    snap.docs.forEach(function(doc){
+      var v = doc.data() || {};
+      next[doc.id] = {name:String(v.name || doc.id), cat:String(v.cat || "other")};
+    });
+    state.catalog = next;
+    render();
+  }, onErr);
+})();
+
+})();
+</script>
