@@ -10,7 +10,8 @@
 <meta name="theme-color" content="#12140F" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="icon.svg">
+<!-- Safari ignores SVG here, so the home-screen icon has to be a PNG. -->
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Market Run">
@@ -1402,6 +1403,12 @@ function banner(text){
   var slot = document.getElementById("banner-slot");
   slot.textContent = "";
   slot.appendChild(el("div","banner", text));
+}
+
+if("serviceWorker" in navigator){
+  window.addEventListener("load", function(){
+    navigator.serviceWorker.register("sw.js").catch(function(){});
+  });
 }
 
 try{ myName = localStorage.getItem(LS_NAME) || ""; }catch(e){}
