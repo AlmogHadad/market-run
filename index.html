@@ -430,23 +430,32 @@ var CATS = [
    brand names and imports get typed in Latin even in a Hebrew list. */
 var KEYWORDS = {
   produce:["tomato","cucumber","onion","garlic","potato","carrot","lettuce","pepper","avocado","banana","apple","orange","lemon","grape","melon","watermelon","strawberr","parsley","cilantro","coriander","mint","basil","mushroom","zucchini","eggplant","spinach","broccoli","cauliflower","date","fig","pomegranate","salad","herb","ginger","celery","corn","peach","pear","plum","mango","kiwi","cabbage","radish","beet","sweet potato",
-    "עגבני","מלפפון","בצל","שום","תפוח אדמה","תפוא","גזר","חסה","פלפל","אבוקדו","בננ","תפוח","תפוז","לימון","ענב","מלון","אבטיח","תות","פטרוזיליה","כוסברה","נענע","בזיליקום","פטריו","קישוא","חציל","תרד","ברוקולי","כרובית","תמר","תאנ","רימון","סלט","זנגביל","סלרי","תירס","אפרסק","אגס","שזיף","מנגו","קיווי","כרוב","צנון","סלק","בטטה"],
+    "עגבני","מלפפון","בצל","שום","תפוח אדמה","תפוא","גזר","חסה","פלפל","אבוקדו","בננ","תפוח","תפוז","לימון","ענב","מלון","אבטיח","תות","פטרוזיליה","כוסברה","נענע","בזיליקום","פטריו","קישוא","חציל","תרד","ברוקולי","כרובית","תמר","תאנ","רימון","סלט","זנגביל","סלרי","תירס","אפרסק","אגס","שזיף","מנגו","קיווי","כרוב","צנון","סלק","בטטה",
+    "גמב","שמיר","עירית","קולרבי","כרישה","במיה","דלעת","דלורית","ליים","אשכולית","קלמנטינ","נקטרינ","דובדבן","אוכמניו","פטל","ארטישוק","שעועית ירוק","אפונה טריה","נבטים","זית"],
   bakery:["bread","pita","challah","bun","roll","baguette","croissant","cake","pastry","bagel","toast","tortilla","wrap","borekas",
-    "לחם","פיתה","פיתות","חלה","לחמני","בגט","קרואסון","עוגה","עוגת","בורקס","בייגל","טוסט","טורטיה","לאפה"],
+    "לחם","פיתה","פיתות","חלה","לחמני","בגט","קרואסון","עוגה","עוגת","בורקס","בייגל","טוסט","טורטיה","לאפה",
+    "מלווח","מלאווח","גחנון","סמבוסק","רוגלך","מאפה","מאפים","קרואסן","פרנה"],
   dairy:["milk","cheese","yogurt","yoghurt","butter","cream","egg","cottage","labneh","feta","mozzarella","parmesan","sour cream","kefir","pudding",
-    "חלב","גבינ","יוגורט","חמאה","שמנת","ביצ","קוטג","לבנה","פטה","מוצרלה","פרמז","קפיר","מעדן","שוקו"],
+    "חלב","גבינ","יוגורט","חמאה","שמנת","ביצ","קוטג","לבנה","פטה","מוצרלה","פרמז","קפיר","מעדן","שוקו",
+    "בולגרית","צפתית","ריקוטה","מסקרפונה","אשל","יופלה","מילקי","חלבי","קשקבל","עמק","גאודה","תנובה","טרה"],
   meat:["chicken","beef","meat","fish","salmon","tuna","turkey","lamb","sausage","schnitzel","mince","steak","shrimp","kebab","burger","liver","breast","wings",
-    "עוף","בקר","בשר","דג","סלמון","טונה","הודו","כבש","נקניק","שניצל","טחון","סטייק","שרימפס","קבב","המבורגר","כבד","חזה","כנפיים"],
+    "עוף","בקר","בשר","דג","סלמון","טונה","הודו","כבש","נקניק","שניצל","טחון","סטייק","שרימפס","קבב","המבורגר","כבד","חזה","כנפיים",
+    "פילה","אנטריקוט","אסאדו","שוקיים","ירכיים","קציצ","נתח","פרגית","דניס","לברק","מושט","אמנון"],
   frozen:["frozen","ice cream","peas","fries","popsicle","sorbet",
-    "קפוא","גלידה","אפונה","צ'יפס","שלגון","סורבה"],
+    "קפוא","גלידה","אפונה","צ'יפס","שלגון","סורבה","בצק","קרטיב","מלאווח קפוא","פיצה קפואה"],
   pantry:["rice","pasta","flour","sugar","salt","oil","vinegar","tahini","hummus","chickpea","lentil","bean","canned","tomato paste","spice","cumin","paprika","ketchup","mayo","mustard","cereal","oat","honey","jam","coffee","tea","couscous","quinoa","noodle","soup","sauce","spaghetti","baking","yeast","silan","halva","peanut butter","vanilla","cocoa",
-    "אורז","פסטה","קמח","סוכר","מלח","שמן","חומץ","טחינה","חומוס","עדש","שעועית","שימור","רסק","תבלין","כמון","פפריקה","קטשופ","מיונז","חרדל","דגני","שיבולת","דבש","ריבה","קפה","תה","קוסקוס","קינואה","אטריות","מרק","רוטב","שמרים","סילאן","חלווה","ממרח","וניל","קקאו","פתית"],
+    "אורז","פסטה","קמח","סוכר","מלח","שמן","חומץ","טחינה","חומוס","עדש","שעועית","שימור","רסק","תבלין","כמון","פפריקה","קטשופ","מיונז","חרדל","דגני","שיבולת","דבש","ריבה","קפה","תה","קוסקוס","קינואה","אטריות","מרק","רוטב","שמרים","סילאן","חלווה","ממרח","וניל","קקאו","פתית",
+    "אבקת אפיה","אבקת אפייה","אפיה","אפייה","סודה לשתיה","סודה לשתייה","סוכריה על מקל",
+    "צ'יאה","צ'יה","גרנולה","בורגול","פריכיות","סוכרזית","ממתיק","קורנפלור","פירורי לחם",
+    "צ'ילי","סויה","פסטו","זיתים","מלפפון חמוץ","נס קפה","שוקולית","קפואים יבשים"],
   drinks:["water","juice","soda","cola","beer","wine","sparkling","lemonade","arak","vodka","whiskey","energy drink",
-    "מים","מיץ","משקה","קולה","בירה","יין","סודה","לימונד","ערק","וודקה","וויסקי"],
+    "מים","מיץ","משקה","קולה","בירה","יין","סודה","לימונד","ערק","וודקה","וויסקי","תרכיז","נקטר","שוופס","ספרייט","פאנטה","מינרל"],
   snacks:["chips","chocolate","candy","cookie","biscuit","nuts","popcorn","wafer","bamba","bisli","pretzel","cracker","granola bar","gum","almond","cashew","pistachio",
-    "חטיף","שוקולד","סוכרי","עוגי","ביסקוויט","אגוז","פופקורן","ופל","במבה","ביסלי","בייגלה","קרקר","מסטיק","שקד","קשיו","פיסטוק","גרעינים"],
+    "חטיף","שוקולד","סוכרי","עוגי","ביסקוויט","אגוז","פופקורן","ופל","במבה","ביסלי","בייגלה","קרקר","מסטיק","שקד","קשיו","פיסטוק","גרעינים",
+    "פתיבר","פתי בר","דובונים","אפרופו","דוריטוס","תפוצ'יפס","מרשמלו","קרמבו","מקופלת","גומי","תמרי","חטיפי","פרינגלס","ציפס"],
   household:["toilet paper","paper towel","soap","shampoo","detergent","dish","trash","garbage","bag","cleaner","sponge","toothpaste","toothbrush","diaper","tampon","pad","deodorant","laundry","bleach","napkin","tissue","foil","battery","light bulb","razor","conditioner",
-    "נייר טואלט","מגבות","סבון","שמפו","אבקת כביסה","כלים","זבל","אשפה","שקי","מנקה","ספוג","משחת שיניים","מברשת","חיתול","טמפון","תחבוש","דאודורנט","כביסה","אקונומיקה","מפיות","טישו","אלומיניום","סוללה","נורה","סכין גילוח","מרכך"]
+    "נייר טואלט","מגבות","סבון","שמפו","אבקת כביסה","כלים","זבל","אשפה","שקי","מנקה","ספוג","משחת שיניים","מברשת","חיתול","טמפון","תחבוש","דאודורנט","כביסה","אקונומיקה","מפיות","טישו","אלומיניום","סוללה","נורה","סכין גילוח","מרכך",
+    "אורנים","סנו","ניקוי","מטהר","מגבונ","נרות","גפרורים","מפית","חד פעמי","רצפה","אקונומיק","ג'ל כביסה","ג'ל רצפה","קרם גוף","נוזל כלים","חומר ניקוי","ריחן","סמרטוט","כפפות"]
 };
 
 var QUICK_ADD = [
@@ -545,9 +554,12 @@ function uid(){
   return Date.now().toString(36) + Math.random().toString(36).slice(2,7);
 }
 
-/* Hebrew final forms are the same letters: מלפפון and מלפפונים must match. */
+/* Hebrew final forms are the same letters: מלפפון and מלפפונים must match.
+   Apostrophes go too — people type the Hebrew geresh ׳ while the keyword list
+   is written with an ASCII ', and צ׳יפס would never match צ'יפס otherwise. */
 function heNorm(s){
-  return s.replace(/ך/g,"כ").replace(/ם/g,"מ").replace(/ן/g,"נ")
+  return s.replace(/[׳״‘’“”'"]/g,"")
+          .replace(/ך/g,"כ").replace(/ם/g,"מ").replace(/ן/g,"נ")
           .replace(/ף/g,"פ").replace(/ץ/g,"צ");
 }
 function matchKey(s){
@@ -584,6 +596,10 @@ function guessCat(name){
 function catIcon(key){
   for(var i=0;i<CATS.length;i++){ if(CATS[i][0] === key) return CATS[i][2]; }
   return "📦";
+}
+function catLabel(key){
+  for(var i=0;i<CATS.length;i++){ if(CATS[i][0] === key) return CATS[i][1]; }
+  return "שונות";
 }
 
 /* "2 חלב", "חלב x2", "1kg עגבניות" -> {name, qty} */
@@ -844,7 +860,7 @@ function addItem(rawName, presetQty){
   }
 
   var cat = (known && known.cat) || guessCat(parsed.name);
-  writeItem({
+  var item = {
     id: uid(),
     name: known ? known.name : parsed.name,
     qty: presetQty || parsed.qty || "",
@@ -852,10 +868,17 @@ function addItem(rawName, presetQty){
     addedBy: myName || "",
     done: false,
     ts: Date.now()
-  });
+  };
+  writeItem(item);
 
   /* Remember the name so it autocompletes next time. */
   if(!known) writeCatalog(sl, {name: parsed.name, cat: cat});
+
+  /* Say where it landed, with one tap to move it if the guess was wrong. */
+  flash(catIcon(cat) + " נוסף ל" + catLabel(cat), {
+    label: "עריכה",
+    run: function(){ openEditItem(state.items[item.id] || item); }
+  });
 }
 
 function toggleDone(id){
