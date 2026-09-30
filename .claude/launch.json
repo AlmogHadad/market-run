@@ -4,7 +4,7 @@
     {
       "name": "market-run",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8787"],
+      "runtimeArgs": ["-m", "http.server", "8787", "--directory", "public"],
       "port": 8787
     }
   ]

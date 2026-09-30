@@ -1,0 +1,10 @@
+# Static site — nothing to build, just publish the folder.
+[build]
+  publish = "public"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    # The worker must never be served stale, or a deploy can't reach devices
+    # that already installed an older one.
+    Cache-Control = "no-cache"
