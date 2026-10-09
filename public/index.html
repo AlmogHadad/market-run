@@ -543,7 +543,9 @@ var SCOPE_TAILS = [
 
 var state = {
   items:   {},   /* id   -> item */
-  catalog: {}    /* slug -> {name, cat} — names you've added before */
+  catalog: {},   /* slug -> {name, cat} — names you've added before */
+  photos:  {}    /* slug -> photo, device-only mode; a synced list keeps
+                    these in Firestore and fetches one only when needed */
 };
 
 var db = null;
@@ -865,6 +867,7 @@ function loadLocal(){
     if(d && typeof d === "object"){
       state.items   = d.items   || {};
       state.catalog = d.catalog || {};
+      state.photos  = d.photos  || {};
     }
   }catch(e){}
 }
@@ -905,10 +908,45 @@ async function writeCatalog(sl, entry){
   try{ await db.doc("catalog/" + sl).set(entry); }
   catch(e){ handleWriteError(e); }
 }
+/* A name dropped from autocomplete takes its remembered photo with it. */
 async function removeCatalog(sl){
   delete state.catalog[sl];
+  rememberPhoto(sl, "");
   if(local){ saveLocal(); return; }
   try{ await db.doc("catalog/" + sl).delete(); }catch(e){}
+}
+
+/* Photos are remembered by name in their own collection rather than on the
+   catalog, which every device downloads whole on open — so only the photo
+   for a name being added again is ever fetched. "" forgets it. */
+async function rememberPhoto(sl, img){
+  if(local){
+    if(img) state.photos[sl] = img; else delete state.photos[sl];
+    saveLocal();
+    return;
+  }
+  try{
+    if(img) await db.doc("photos/" + sl).set({img: img});
+    else await db.doc("photos/" + sl).delete();
+  }catch(e){ handleWriteError(e); }
+}
+async function recallPhoto(sl){
+  if(local) return state.photos[sl] || "";
+  try{
+    var snap = await db.doc("photos/" + sl).get();
+    var v = snap.exists ? snap.data() : null;
+    return (v && isPhoto(v.img)) ? v.img : "";
+  }catch(e){ return ""; }   /* offline and never fetched here: go without */
+}
+
+/* The item is already on the list by now; its photo follows once fetched,
+   so adding never waits on the network. */
+async function attachRemembered(id, sl){
+  var img = await recallPhoto(sl);
+  var cur = state.items[id];
+  if(img && cur && !cur.img && slug(cur.name) === sl){
+    writeItem(Object.assign({}, cur, {img: img}));
+  }
 }
 async function deleteIds(ids){
   ids.forEach(function(id){ delete state.items[id]; });
@@ -955,8 +993,10 @@ function addItem(rawName, presetQty){
   };
   writeItem(item);
 
-  /* Remember the name so it autocompletes next time. */
+  /* Remember the name so it autocompletes next time — or, if it's been
+     added before, bring back the photo it had. */
   if(!known) writeCatalog(sl, {name: parsed.name, cat: cat});
+  else attachRemembered(item.id, sl);
 
   /* Say where it landed, with one tap to move it if the guess was wrong. */
   flash(catIcon(cat) + " נוסף ל" + catLabel(cat), {
@@ -1006,6 +1046,7 @@ function renameItem(id, newName, newQty, cat, photo){
     var mine = (photo === undefined) ? cur.img : photo;
     if(mine) merged.img = mine;
     writeItem(merged);
+    if(mine && mine !== twin.img) rememberPhoto(newSlug, mine);
     deleteIds([id]);
     flash("אוחד עם " + newName + ".");
     return;
@@ -1015,6 +1056,15 @@ function renameItem(id, newName, newQty, cat, photo){
   if(photo === "") delete next.img;
   else if(photo) next.img = photo;
   writeItem(next);
+
+  /* The photo belongs to the name too: a new one is remembered, a removed
+     one forgotten, and a rename carries it over — or picks up the photo the
+     new name already had. */
+  if(photo !== undefined) rememberPhoto(newSlug, photo);
+  else if(newSlug !== oldSlug){
+    if(next.img) rememberPhoto(newSlug, next.img);
+    else attachRemembered(id, newSlug);
+  }
 
   if(newSlug !== oldSlug){
     var stillUsed = Object.keys(state.items).some(function(k){
@@ -1182,6 +1232,9 @@ function openEditItem(it){
     file.type = "file"; file.name = "edit-photo"; file.accept = "image/*";
     file.hidden = true;
     f4.appendChild(file);
+    var photoNote = el("div","sublabel","נשמרת לפי השם וחוזרת בפעם הבאה שתוסיפו את הפריט.");
+    photoNote.style.margin = "2px 0 0";
+    f4.appendChild(photoNote);
     sheet.appendChild(f4);
 
     var paintPhoto = function(){
@@ -1454,7 +1507,7 @@ function openSettings(){
     });
     sheet.appendChild(clear);
 
-    var note = el("p",null,"פריטים שהוספתם בעבר נשמרים לפי השם, כך שהם מושלמים אוטומטית בפעם הבאה.");
+    var note = el("p",null,"פריטים שהוספתם בעבר נשמרים לפי השם, כך שהם מושלמים אוטומטית בפעם הבאה — יחד עם התמונה, אם צירפתם.");
     note.style.cssText = "margin:10px 0 0;font-size:13px;color:var(--ink-faint)";
     sheet.appendChild(note);
   }, "הגדרות");
