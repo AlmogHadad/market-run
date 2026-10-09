@@ -225,6 +225,13 @@ button{cursor:pointer;background:none;border:none}
 }
 .r-more:hover{background:var(--surface-2);color:var(--ink)}
 .r-more svg{width:18px;height:18px}
+/* Photo attached to an item — a tap opens it full size. */
+.r-thumb{
+  width:40px;height:40px;flex:none;padding:0;overflow:hidden;
+  border-radius:8px;border:1px solid var(--line);background:var(--surface-2);
+}
+.r-thumb:hover{border-color:var(--line-strong)}
+.r-thumb img{display:block;width:100%;height:100%;object-fit:cover}
 
 /* ---------- empty / done ---------- */
 .empty{
@@ -310,6 +317,24 @@ button{cursor:pointer;background:none;border:none}
 .apick[data-sel="1"]{
   border-color:var(--accent);background:var(--accent-soft);
   color:var(--accent);font-weight:600;
+}
+.imgpick{display:flex;flex-direction:column;align-items:flex-start;gap:10px}
+.imgprev{
+  display:block;max-width:100%;max-height:160px;
+  border-radius:11px;border:1px solid var(--line);background:var(--surface);
+}
+.imgbtns{display:flex;flex-wrap:wrap;gap:7px}
+.imgbtn{
+  display:flex;align-items:center;gap:7px;
+  border:1px solid var(--line);background:var(--surface);
+  border-radius:999px;padding:9px 14px;font-size:14px;color:var(--ink-muted);
+}
+.imgbtn:hover{border-color:var(--accent);color:var(--accent)}
+.imgbtn:disabled{border-color:var(--line);color:var(--ink-faint);cursor:default}
+.imgbtn svg{width:17px;height:17px}
+.viewer{
+  display:block;width:100%;max-height:64dvh;object-fit:contain;
+  border-radius:11px;background:var(--surface);
 }
 
 /* ---------- banner + toast ---------- */
@@ -731,6 +756,54 @@ function commandEntries(cmd){
   });
 }
 
+/* --------------------------------------------------------------- photos */
+
+/* A photo rides inside its item's own document, so it's shrunk to what still
+   reads as a label but keeps every sync small. JPEG because Safari's canvas
+   can't encode WebP and would quietly hand back a far larger PNG. */
+var PHOTO_STEPS = [[720,.72],[560,.66],[420,.6],[320,.55]];
+var PHOTO_MAX = 200000;   /* characters of data URL, ~150 KB */
+
+function shrinkPhoto(file){
+  return new Promise(function(resolve, reject){
+    if(file.type && !/^image\//.test(file.type)){ reject(new Error("not an image")); return; }
+    var url = URL.createObjectURL(file);
+    var im = new Image();
+    im.onload = function(){
+      URL.revokeObjectURL(url);
+      var w = im.naturalWidth, h = im.naturalHeight, out = "";
+      for(var i=0;i<PHOTO_STEPS.length;i++){
+        var k = Math.min(1, PHOTO_STEPS[i][0] / Math.max(w, h));
+        var c = document.createElement("canvas");
+        c.width = Math.max(1, Math.round(w * k));
+        c.height = Math.max(1, Math.round(h * k));
+        var ctx = c.getContext("2d");
+        /* JPEG has no alpha — a transparent screenshot would turn black. */
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, c.width, c.height);
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(im, 0, 0, c.width, c.height);
+        out = c.toDataURL("image/jpeg", PHOTO_STEPS[i][1]);
+        if(out.length <= PHOTO_MAX) break;
+      }
+      resolve(out);
+    };
+    im.onerror = function(){ URL.revokeObjectURL(url); reject(new Error("decode")); };
+    im.src = url;
+  });
+}
+
+/* Anyone with the link can write to the list, so only inline images are
+   shown — a remote URL here would be a tracking pixel. */
+function isPhoto(s){
+  return typeof s === "string" && /^data:image\/(jpeg|png|webp);base64,/.test(s);
+}
+
+var CAMERA = [
+  "M3 8.5a2 2 0 0 1 2-2h2.2l1.6-2.2h6.4l1.6 2.2H19a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z",
+  "M12 16.4a3.4 3.4 0 1 0 0-6.8 3.4 3.4 0 0 0 0 6.8z"
+];
+
 /* ---------------------------------------------------------------- toast */
 
 var toastTimer = null;
@@ -777,7 +850,12 @@ async function restore(items){
 /* ------------------------------------------------------------ persistence */
 
 function saveLocal(){
-  try{ localStorage.setItem(LS, JSON.stringify(state)); }catch(e){}
+  try{ localStorage.setItem(LS, JSON.stringify(state)); }
+  catch(e){
+    /* Photos are what fill device storage; say so rather than lose the
+       change quietly on the next reload. */
+    if(e && /quota/i.test(e.name || "")) flash("אין מקום במכשיר — כדאי להסיר כמה תמונות.");
+  }
 }
 function loadLocal(){
   try{
@@ -903,8 +981,9 @@ function clearChecked(){
     : "נמחקו " + removed.length + " פריטים.");
 }
 
-/* Renaming a mistyped item also drops the typo from autocomplete. */
-function renameItem(id, newName, newQty, cat){
+/* Renaming a mistyped item also drops the typo from autocomplete.
+   photo: undefined leaves it alone, "" removes it, a data URL replaces it. */
+function renameItem(id, newName, newQty, cat, photo){
   var cur = state.items[id];
   if(!cur){ flash("הפריט כבר לא ברשימה."); return; }
 
@@ -917,18 +996,25 @@ function renameItem(id, newName, newQty, cat){
     if(k !== id && slug(state.items[k].name) === newSlug) twin = state.items[k];
   });
   if(twin){
-    writeItem(Object.assign({}, twin, {
+    var merged = Object.assign({}, twin, {
       name: newName,
       qty: String(multiplier(twin.qty) + multiplier(newQty || "1")),
       cat: cat,
       done: false
-    }));
+    });
+    /* The photo you were editing wins; otherwise the twin keeps its own. */
+    var mine = (photo === undefined) ? cur.img : photo;
+    if(mine) merged.img = mine;
+    writeItem(merged);
     deleteIds([id]);
     flash("אוחד עם " + newName + ".");
     return;
   }
 
-  writeItem(Object.assign({}, cur, {name:newName, qty:newQty, cat:cat}));
+  var next = Object.assign({}, cur, {name:newName, qty:newQty, cat:cat});
+  if(photo === "") delete next.img;
+  else if(photo) next.img = photo;
+  writeItem(next);
 
   if(newSlug !== oldSlug){
     var stillUsed = Object.keys(state.items).some(function(k){
@@ -1032,6 +1118,17 @@ function itemRow(it){
   main.addEventListener("click", function(){ toggleDone(it.id); });
   row.appendChild(main);
 
+  if(isPhoto(it.img)){
+    var thumb = el("button","r-thumb");
+    thumb.type = "button";
+    thumb.setAttribute("aria-label","תמונה של " + it.name);
+    var ti = el("img");
+    ti.src = it.img; ti.alt = "";
+    thumb.appendChild(ti);
+    thumb.addEventListener("click", function(){ openPhoto(it); });
+    row.appendChild(thumb);
+  }
+
   var more = el("button","r-more");
   more.type = "button";
   more.setAttribute("aria-label","עריכת " + it.name);
@@ -1074,6 +1171,58 @@ function openEditItem(it){
     f2.appendChild(l2); f2.appendChild(i2);
     sheet.appendChild(f2);
 
+    /* Optional photo, for when the exact brand or pack matters. Staged like
+       the other fields and only written on save. */
+    var photo, photoBusy = false;   /* photo: undefined untouched, "" removed */
+    var f4 = el("div","field");
+    f4.appendChild(el("label",null,"תמונה"));
+    var pickWrap = el("div","imgpick");
+    f4.appendChild(pickWrap);
+    var file = el("input");
+    file.type = "file"; file.name = "edit-photo"; file.accept = "image/*";
+    file.hidden = true;
+    f4.appendChild(file);
+    sheet.appendChild(f4);
+
+    var paintPhoto = function(){
+      pickWrap.textContent = "";
+      var src = (photo === undefined) ? it.img : photo;
+      if(isPhoto(src)){
+        var im = el("img","imgprev");
+        im.src = src; im.alt = "";
+        pickWrap.appendChild(im);
+      } else src = "";
+
+      var btns = el("div","imgbtns");
+      var pick = el("button","imgbtn");
+      pick.type = "button";
+      pick.disabled = photoBusy;
+      pick.appendChild(svg(CAMERA,"1.8"));
+      pick.appendChild(document.createTextNode(
+        photoBusy ? "התמונה בעיבוד…" : (src ? "החלפה" : "הוספת תמונה")));
+      pick.addEventListener("click", function(){ file.click(); });
+      btns.appendChild(pick);
+      if(src && !photoBusy){
+        var drop = el("button","imgbtn","הסרה");
+        drop.type = "button";
+        drop.addEventListener("click", function(){ photo = ""; paintPhoto(); });
+        btns.appendChild(drop);
+      }
+      pickWrap.appendChild(btns);
+    };
+    file.addEventListener("change", function(){
+      var f = file.files && file.files[0];
+      file.value = "";   /* so picking the same file again still fires */
+      if(!f) return;
+      photoBusy = true;
+      paintPhoto();
+      shrinkPhoto(f).then(
+        function(src){ photo = src; },
+        function(){ flash("לא הצלחנו לקרוא את התמונה."); }
+      ).then(function(){ photoBusy = false; paintPhoto(); });
+    });
+    paintPhoto();
+
     var f3 = el("div","field");
     f3.appendChild(el("label",null,"מדף"));
     var picks = el("div","apicks");
@@ -1099,13 +1248,14 @@ function openEditItem(it){
     sheet.appendChild(f3);
 
     var save = function(){
+      if(photoBusy){ flash("רגע, התמונה עוד בעיבוד."); return; }
       var newName = i1.value.trim();
       if(!newName){ flash("צריך לתת שם לפריט."); i1.focus(); return; }
       var renamed = newName !== it.name;
       /* A fixed typo should land in the right aisle unless you picked one. */
       var cat = catTouched ? chosenCat : (renamed ? guessCat(newName) : (it.cat || "other"));
       closeSheet();
-      renameItem(it.id, newName, i2.value.trim(), cat);
+      renameItem(it.id, newName, i2.value.trim(), cat, photo);
     };
     var onEnter = function(e){ if(e.key === "Enter"){ e.preventDefault(); save(); } };
     i1.addEventListener("keydown", onEnter);
@@ -1131,6 +1281,20 @@ function openEditItem(it){
 
     setTimeout(function(){ i1.focus(); i1.select(); }, 30);
   }, "עריכת פריט");
+}
+
+function openPhoto(it){
+  openSheet(function(sheet){
+    sheetHead(sheet, it.name);
+    var im = el("img","viewer");
+    im.src = it.img; im.alt = it.name;
+    sheet.appendChild(im);
+
+    var edit = el("button","linkbtn","עריכת הפריט");
+    edit.type = "button";
+    edit.addEventListener("click", function(){ openEditItem(state.items[it.id] || it); });
+    sheet.appendChild(edit);
+  }, "תמונה של " + it.name);
 }
 
 function emptyState(){
@@ -1495,7 +1659,7 @@ render();
     var next = {};
     snap.docs.forEach(function(doc){
       var v = doc.data() || {};
-      next[doc.id] = {
+      var item = {
         id: doc.id,
         name: String(v.name || ""),
         qty: String(v.qty || ""),
@@ -1504,6 +1668,10 @@ render();
         done: !!v.done,
         ts: Number(v.ts) || 0
       };
+      /* Left off entirely when absent, so items without one don't grow an
+         empty field the next time they're written. */
+      if(isPhoto(v.img)) item.img = v.img;
+      next[doc.id] = item;
     });
     state.items = next;
     render();
