@@ -136,7 +136,8 @@ button{cursor:pointer;background:none;border:none}
 }
 
 /* ---------- scroll area ---------- */
-.scroll{flex:1;padding:0 18px 8px}
+/* Bottom padding keeps the last row clear of the floating Netlify badge. */
+.scroll{flex:1;padding:0 18px calc(76px + env(safe-area-inset-bottom))}
 
 /* ---------- add bar ---------- */
 .addwrap{position:relative;padding-top:16px}
