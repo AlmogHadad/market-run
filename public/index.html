@@ -241,13 +241,22 @@ button{cursor:pointer;background:none;border:none}
 .r-thumb img{display:block;width:100%;height:100%;object-fit:cover}
 
 /* Urgent: its own section at the top, a tag on the row. */
-.aisle.urgent .aisle-head{border-bottom-color:var(--urgent)}
-.aisle.urgent .aisle-head h2{color:var(--urgent)}
-.tag-urgent{
-  font-size:11px;font-weight:700;color:var(--urgent);background:var(--urgent-soft);
-  padding:1px 7px;border-radius:999px;
+/* Urgent: tinted in place, with a bar on the start edge. */
+.row[data-urgent="1"]{
+  background:var(--urgent-soft);
+  box-shadow:inset -3px 0 0 var(--urgent);
+  margin-inline:-8px;padding-inline:10px 2px;border-radius:4px;
 }
-.row[data-done="1"] .tag-urgent{display:none}
+.row[data-urgent="1"] .r-name{font-weight:700}
+.row[data-urgent="1"][data-done="1"]{background:none;box-shadow:none}
+.r-urgent{
+  width:34px;height:34px;flex:none;display:grid;place-items:center;
+  border-radius:8px;color:var(--ink-faint);opacity:.7;
+}
+.r-urgent:hover{background:var(--surface-2);color:var(--urgent)}
+.r-urgent svg{width:18px;height:18px}
+.r-urgent[aria-pressed="true"]{color:#fff;background:var(--urgent);opacity:1}
+.r-urgent[aria-pressed="true"]:hover{color:#fff;filter:brightness(1.08)}
 
 /* ---------- packs ---------- */
 .packs{display:flex;gap:7px;overflow-x:auto;padding:12px 0 2px;scrollbar-width:none}
@@ -344,7 +353,9 @@ button{cursor:pointer;background:none;border:none}
 .sheet{
   width:100%;max-width:568px;max-height:82dvh;overflow-y:auto;
   background:var(--ground);border:1px solid var(--line);
-  border-radius:16px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.3);
+  /* Extra room at the bottom so the last button scrolls clear of the
+     floating Netlify badge. */
+  border-radius:16px;padding:20px 20px 72px;box-shadow:0 20px 60px rgba(0,0,0,.3);
 }
 .sheet-head{display:flex;align-items:center;gap:12px;margin-bottom:16px}
 .sheet-head h2{font-family:var(--display);font-weight:800;font-size:19px;margin-inline-end:auto}
@@ -1078,7 +1089,7 @@ function addItem(rawName, presetQty, opts){
 
   /* Say where it landed, with one tap to move it if the guess was wrong. */
   if(!opts.pack){
-    flash((item.urgent ? "🔥 נוסף כדחוף, ב" : catIcon(cat) + " נוסף ל") + catLabel(cat), {
+    flash(catIcon(cat) + (item.urgent ? " נוסף כדחוף ל" : " נוסף ל") + catLabel(cat), {
       label: "עריכה",
       run: function(){ openEditItem(state.items[item.id] || item); }
     });
@@ -1121,6 +1132,14 @@ function toggleDone(id){
   var it = state.items[id];
   if(!it) return;
   writeItem(Object.assign({}, it, {done: !it.done}));
+}
+
+function toggleUrgent(id){
+  var it = state.items[id];
+  if(!it) return;
+  var next = Object.assign({}, it);
+  if(it.urgent) delete next.urgent; else next.urgent = true;
+  writeItem(next);
 }
 
 function clearChecked(){
@@ -1221,20 +1240,7 @@ function renderList(){
 
   if(!items.length){ body.appendChild(emptyState()); return; }
 
-  /* Urgent items leave their aisle for a section of their own up top, so a
-     quick run can stop there. */
-  var urgent = items.filter(function(it){ return it.urgent; });
-  if(urgent.length){
-    var ug = {name:"דחוף", icon:"🔥", items:urgent};
-    var uLeft = urgent.filter(function(i){ return !i.done; }).length;
-    var uh = aisleHead(ug, uLeft);
-    uh.classList.add("urgent");
-    body.appendChild(uh);
-    urgent.slice().sort(function(a,b){ return (a.done?1:0) - (b.done?1:0); })
-      .forEach(function(it){ body.appendChild(itemRow(it, true)); });
-  }
-
-  groupByAisle(items.filter(function(it){ return !it.urgent; })).forEach(function(g){
+  groupByAisle(items).forEach(function(g){
     /* unchecked first inside each aisle, so what's left floats to the top */
     var ordered = g.items.slice().sort(function(a,b){ return (a.done?1:0) - (b.done?1:0); });
     var left = g.items.filter(function(i){ return !i.done; }).length;
@@ -1265,11 +1271,11 @@ function aisleHead(g, left){
   return h;
 }
 
-/* inUrgent: drawn in the urgent section, so it says which aisle it's from
-   instead of repeating that it's urgent. */
-function itemRow(it, inUrgent){
+function itemRow(it){
   var row = el("div","row");
   row.dataset.done = it.done ? "1" : "0";
+  /* Urgent stays in its aisle, just highlighted. */
+  row.dataset.urgent = it.urgent ? "1" : "0";
 
   var check = el("button","check");
   check.type = "button";
@@ -1286,8 +1292,6 @@ function itemRow(it, inUrgent){
   main.appendChild(nm);
 
   var sub = el("div","r-sub");
-  if(inUrgent) sub.appendChild(el("span",null, catIcon(it.cat) + " " + catLabel(it.cat)));
-  else if(it.urgent) sub.appendChild(el("span","tag-urgent","דחוף"));
   if(it.qty) sub.appendChild(el("span","qty", it.qty));
   if(it.addedBy){
     var dot = el("span","person");
@@ -1310,6 +1314,18 @@ function itemRow(it, inUrgent){
     thumb.addEventListener("click", function(){ openPhoto(it); });
     row.appendChild(thumb);
   }
+
+  /* One tap to flag it, without opening the edit sheet. */
+  var flag = el("button","r-urgent");
+  flag.type = "button";
+  flag.setAttribute("aria-pressed", it.urgent ? "true" : "false");
+  flag.setAttribute("aria-label", (it.urgent ? "ביטול דחיפות " : "סימון כדחוף ") + it.name);
+  flag.appendChild(svg(["M12 4.5v9.5","M12 19.2h.01"], "2.8"));
+  flag.addEventListener("click", function(ev){
+    ev.stopPropagation();
+    toggleUrgent(it.id);
+  });
+  row.appendChild(flag);
 
   var more = el("button","r-more");
   more.type = "button";
@@ -1359,7 +1375,7 @@ function openEditItem(it){
     tg.type = "button";
     var tm = el("span","t-main");
     tm.appendChild(document.createTextNode("🔥 דחוף"));
-    tm.appendChild(el("span","t-sub","יופיע למעלה, לפני כל המדפים."));
+    tm.appendChild(el("span","t-sub","מודגש ברשימה, כדי שלא יישכח."));
     tg.appendChild(tm);
     tg.appendChild(el("span","knob"));
     var paintUrgent = function(){ tg.setAttribute("aria-pressed", urgent ? "true" : "false"); };
