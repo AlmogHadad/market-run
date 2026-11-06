@@ -128,7 +128,8 @@ def size_label(qty, unit_qty, uom):
 
 
 def items_of(root):
-    """[[code, name, price, perUnit, perUnitOf, size, weighted], ...] by code."""
+    """[[code, name, price, perUnit, perUnitOf, size, weighted], ...] by code.
+    Products on sale get an 8th element later — see deals_of."""
     seen = {}
     for it in root.iter("item"):
         code = text(it, "itemcode")
@@ -144,11 +145,98 @@ def items_of(root):
     return [seen[k] for k in sorted(seen)]
 
 
-def write_branch(path, head, items):
-    lines = [json.dumps(i, ensure_ascii=False, separators=(",", ":")) for i in items]
-    body = json.dumps(head, ensure_ascii=False, separators=(",", ":"))[:-1]
+# ------------------------------------------------------------------ deals
+#
+# Each branch file lists its deals once, one per line after the products:
+#   [description, minQty, pricePerUnit, maxQty, counts, "YYYY-MM-DD"]
+# and a product on sale carries an 8th element: the indexes of its deals.
+# pricePerUnit is per item, or per kg for produce. counts=1 means the app may
+# use it in totals whenever the list's quantity reaches minQty; 0 means show
+# it as a tag only, because what you'd pay can't be told from the list
+# (spend-over-₪75 deals, 1+1 gifts, prices that fail a sanity check).
+# Coupons, club-only deals and packaging adjustments are left out.
+
+NOT_SALES = re.compile(r"קיזוז|שקיות|פיקדון|פקדון")
+# "…מעל 75" — only with a minimum spend, even when the field is left empty.
+MIN_SPEND = re.compile(r"מעל\s*\d")
+
+
+def latest_promo(files, store):
+    pat = re.compile(r"^promofull\d+-\d+-%s-(\d{8,12})" % store, re.I)
+    hits = [(m.group(1), f) for f in files for m in [pat.match(f)] if m]
+    return max(hits)[1] if hits else None
+
+
+def israel_now():
+    try:
+        from zoneinfo import ZoneInfo
+        return datetime.datetime.now(ZoneInfo("Asia/Jerusalem")).replace(tzinfo=None)
+    except Exception:
+        return datetime.datetime.utcnow() + datetime.timedelta(hours=2)
+
+
+def when(s):
+    try:
+        return datetime.datetime.fromisoformat(s.strip()[:19])
+    except ValueError:
+        return None
+
+
+def deals_of(root, regular):
+    """code -> deals for products we price, best (cheapest) first."""
+    now = israel_now()
+    out = {}
+    for pr in root.iter("promotion"):
+        desc = re.sub(r"\s+", " ", text(pr, "promotiondescription")).strip(" -")
+        if not desc or NOT_SALES.search(desc):
+            continue
+        if text(pr, "additionaliscoupon") == "1":
+            continue
+        clubs = [c.text or "" for c in pr.iter("clubid")]
+        if any(not c.strip().startswith("0") for c in clubs):
+            continue
+        start, end = when(text(pr, "promotionstartdatetime")), when(text(pr, "promotionenddatetime"))
+        if (start and start > now) or (end and end < now):
+            continue
+        min_buy = num(text(pr, "minpurchaseamount")) or 0
+
+        for it in pr.iter("promotionitem"):
+            code = text(it, "itemcode")
+            reg = regular.get(code)
+            if not reg:
+                continue
+            # The chains put these on the item, the promotion, or both.
+            pick = lambda tag: text(it, tag) or text(pr, tag)
+            reward = pick("rewardtype")
+            price = num(pick("discountedprice"))
+            mn = num(pick("minqty")) or 1
+            mx = num(pick("maxqty")) or 0
+            if price is None:
+                continue
+            per = round(price / mn, 2) if mn >= 1 else price
+            counts = 1 if (reward in ("1", "3", "10") and not min_buy
+                           and not MIN_SPEND.search(desc)) else 0
+            # A "deal" that isn't cheaper, or is implausibly cheap, is
+            # something we've misread — show it, but don't count it.
+            if not (reg * 0.15 <= per < reg * 0.995):
+                counts = 0
+                if per >= reg:
+                    continue
+            d = [desc, mn, per, mx, counts, end.strftime("%Y-%m-%d") if end else ""]
+            lst = out.setdefault(code, [])
+            if all(x[0] != desc for x in lst):
+                lst.append(d)
+    for code in out:
+        out[code] = sorted(out[code], key=lambda d: (-d[4], d[2]))[:3]
+    return out
+
+
+def write_branch(path, head, items, deals=()):
+    dump = lambda x: json.dumps(x, ensure_ascii=False, separators=(",", ":"))
+    body = dump(head)[:-1]
     with open(path, "w", encoding="utf-8", newline="\n") as f:
-        f.write(body + ',"items":[\n' + ",\n".join(lines) + "\n]}\n")
+        f.write(body + ',"items":[\n' + ",\n".join(dump(i) for i in items) +
+                '\n],"deals":[\n' + ",\n".join(dump(d) for d in deals) + "\n]}\n")
 
 
 def main():
@@ -174,6 +262,23 @@ def main():
                 items = items_of(parse_xml(download(s, fname)))
                 if len(items) < 500:
                     raise RuntimeError("only %d items in %s" % (len(items), fname))
+                # Deals are a bonus: a missing or broken file leaves them out.
+                ndeals, table = 0, []
+                pname = latest_promo(files, store)
+                if pname:
+                    try:
+                        deals = deals_of(parse_xml(download(s, pname)),
+                                         {i[0]: i[2] for i in items})
+                        # Sorted, so the indexes (and the diff) stay stable.
+                        table = sorted({tuple(d) for ds in deals.values() for d in ds},
+                                       key=lambda d: (d[0], d[1], d[2], d[5]))
+                        at = {d: n for n, d in enumerate(table)}
+                        for i in items:
+                            if i[0] in deals:
+                                i.append([at[tuple(d)] for d in deals[i[0]]])
+                                ndeals += 1
+                    except Exception as e:
+                        print("  deals skipped for %s %s: %s" % (cid, store, e), file=sys.stderr)
                 stamp = re.search(r"-(\d{8})-?(\d{4})", fname)
                 when = "%s-%s-%sT%s:%s" % (stamp.group(1)[:4], stamp.group(1)[4:6],
                                            stamp.group(1)[6:], stamp.group(2)[:2],
@@ -181,11 +286,11 @@ def main():
                 path = "%s-%s.json" % (cid, store)
                 head = {"chain": cid, "store": store, "name": names.get(store, store),
                         "priced": when}
-                write_branch(os.path.join(OUT, path), head, items)
+                write_branch(os.path.join(OUT, path), head, items, [list(d) for d in table])
                 branches.append({"store": store, "name": names.get(store, store),
                                  "file": path, "items": len(items), "priced": when})
-                print("%-10s %s %-24s %6d items  %s" % (cid, store, names.get(store, ""),
-                                                         len(items), fname))
+                print("%-10s %s %-24s %6d items %5d on sale  %s" % (
+                    cid, store, names.get(store, ""), len(items), ndeals, fname))
             chains.append({"id": cid, "name": cname, "default": wanted[0], "branches": branches})
         except Exception as e:  # keep yesterday's data for this chain
             print("FAILED %s: %s" % (cid, e), file=sys.stderr)

@@ -321,6 +321,13 @@ button{cursor:pointer;background:none;border:none}
 .pp[data-best="1"]{color:var(--accent);font-weight:700}
 .pp[data-approx="1"]::after{content:"≈";color:var(--ink-faint);font-size:10px;margin-inline-start:1px}
 .pp small{display:block;font-size:9.5px;color:var(--ink-faint);font-family:var(--body)}
+.prow .p-deal,.pick .p-deal{font-size:11.5px;line-height:1.4;color:var(--ink-faint);overflow-wrap:anywhere}
+.p-deal[data-on="1"]{color:var(--urgent)}
+.pp[data-deal="1"]{color:var(--urgent)}
+.pp[data-deal="1"][data-best="1"]{font-weight:700}
+.pp small.was{text-decoration:line-through}
+.total .t-save{font-size:11px;color:var(--urgent);margin-top:2px}
+.pick .k-p.sale{background:var(--urgent-soft);color:var(--urgent)}
 .pnote{font-size:12.5px;color:var(--ink-faint);margin:10px 0 0;line-height:1.55}
 .loading{padding:28px 0;text-align:center;color:var(--ink-faint);font-size:14px}
 .picker-res{display:flex;flex-direction:column;margin-top:4px}
@@ -1899,7 +1906,8 @@ function loadPrices(){
             var cur = g.by[cid];
             /* the same thing listed twice: keep the cheaper */
             if(!cur || p[2] < cur.price){
-              g.by[cid] = {code:p[0], name:p[1], price:p[2], unit:p[3], unitOf:p[4], size:p[5], w:!!p[6]};
+              g.by[cid] = {code:p[0], name:p[1], price:p[2], unit:p[3], unitOf:p[4], size:p[5], w:!!p[6],
+                           deals: liveDeals(p[7], f.deals)};
             }
             /* the longest name is the least truncated one */
             if(p[1].length > g.name.length && !p[6]){ g.name = p[1]; g.n = pnorm(p[1]); g.stem = pstemAll(g.n); }
@@ -1983,6 +1991,54 @@ function resolveItem(it){
   return {g:g, linked:null, per:per};
 }
 
+/* A product's deals that haven't ended: [desc, minQty, perUnit, maxQty,
+   counts, "YYYY-MM-DD"]. The file can be half a day old, so the end date is
+   checked again here. */
+function liveDeals(idx, table){
+  if(!idx || !table) return null;
+  var today = new Date().toISOString().slice(0,10);
+  var out = idx.map(function(i){ return table[i]; }).filter(function(d){
+    return d && (!d[5] || d[5] >= today);
+  });
+  return out.length ? out : null;
+}
+
+/* What m of a product cost, using the best deal that clearly applies to that
+   quantity: a fixed sale price (up to its limit), or "X for Y" when m
+   reaches X — buying X of the same product always qualifies, even for a
+   deal that mixes a group. Leftover units are at the regular price. */
+function costOf(p, m){
+  var best = {cost:p.price * m, deal:null};
+  (p.deals || []).forEach(function(d){
+    if(!d[4]) return;
+    var mn = d[1], per = d[2], mx = d[3];
+    if(mn >= 1 && m < mn) return;
+    var room = mx > 0 ? Math.min(m, mx) : m;
+    var units = mn > 1 ? Math.floor(room / mn) * mn : room;
+    if(units <= 0) return;
+    var cost = units * per + (m - units) * p.price;
+    if(cost < best.cost - 0.004) best = {cost:cost, deal:d};
+  });
+  return best;
+}
+/* A deal in our own words — the chains' descriptions are sometimes just the
+   product name. A tag-only deal keeps theirs too, since the condition that
+   stops it counting ("מעל 99") is only written there. */
+function dealTerms(d, weighted){
+  var mn = d[1], per = d[2], mx = d[3];
+  var t = mn > 1 && !weighted
+    ? mn + " ב-₪" + money(per * mn)
+    : "ב-₪" + money(per) + (weighted ? " לק״ג" : "");
+  if(mx > 0) t += ", עד " + mx + (weighted ? " ק״ג" : "");
+  return d[4] ? t : t + " · " + d[0];
+}
+
+/* The deal to mention for a product: the one applied, else the best on offer. */
+function dealNote(p, applied){
+  if(applied) return applied;
+  return (p.deals && p.deals[0]) || null;
+}
+
 function money(n){ return n.toFixed(2).replace(/\.00$/,""); }
 function shortTime(iso){
   var d = new Date(String(iso || "").replace(/Z$/,":00Z"));
@@ -2033,7 +2089,7 @@ function paintPrices(sheet){
   var sub = el("div","sublabel");
   sub.appendChild(document.createTextNode(
     chains.map(function(c){ return c.name + " " + c.branch; }).join(" · ") +
-    ". מחירים רגילים, בלי מבצעים. עודכן " + shortTime(prices.index.updated) + ". "));
+    ". כולל מבצעים לכל הלקוחות כשהכמות ברשימה מתאימה; בלי מועדונים וקופונים. עודכן " + shortTime(prices.index.updated) + ". "));
   var chg = el("button","linkbtn","החלפת סניפים");
   chg.type = "button";
   chg.style.padding = "0";
@@ -2052,14 +2108,23 @@ function paintPrices(sheet){
 
   /* Totals only over items every chain has, so the comparison is fair.
      Sold by weight counts as 1 kg (or the quantity, if it's a number). */
-  var sums = {}, counted = 0, skipped = 0;
-  chains.forEach(function(c){ sums[c.id] = 0; });
+  var sums = {}, saved = {}, counted = 0, skipped = 0;
+  chains.forEach(function(c){ sums[c.id] = 0; saved[c.id] = 0; });
   rows.forEach(function(row){
+    var m = multiplier(row.it.qty);
+    row.cost = {};
+    chains.forEach(function(c){
+      var x = row.r.per[c.id];
+      if(x) row.cost[c.id] = costOf(x.p, m);
+    });
     var all = chains.every(function(c){ return row.r.per[c.id]; });
     if(!all){ skipped++; return; }
     counted++;
-    var m = multiplier(row.it.qty);
-    chains.forEach(function(c){ sums[c.id] += row.r.per[c.id].p.price * m; });
+    chains.forEach(function(c){
+      var k = row.cost[c.id], p = row.r.per[c.id].p;
+      sums[c.id] += k.cost;
+      saved[c.id] += p.price * m - k.cost;
+    });
   });
 
   var totals = el("div","totals");
@@ -2071,6 +2136,7 @@ function paintPrices(sheet){
     t.appendChild(el("div","t-sum", counted ? "₪" + money(sums[c.id]) : "—"));
     var d = sums[c.id] - best;
     t.appendChild(el("div","t-diff", !counted ? "" : (d > 0.004 ? "+₪" + money(d) : "הכי זול")));
+    if(saved[c.id] > 0.004) t.appendChild(el("div","t-save", "במבצע −₪" + money(saved[c.id])));
     totals.appendChild(t);
   });
   sheet.appendChild(totals);
@@ -2079,7 +2145,7 @@ function paintPrices(sheet){
     ? "הסכום כולל " + counted + " מתוך " + items.length + " פריטים — רק מה שנמצא בכל שלוש הרשתות."
     : "אין עדיין פריט שנמצא בכל שלוש הרשתות.";
   if(skipped) note += " פריט בלי מחיר באחת הרשתות לא נספר.";
-  sheet.appendChild(el("p","pnote", note + " ירקות ופירות נספרים לפי ק״ג."));
+  sheet.appendChild(el("p","pnote", note + " המחירים לכמות שברשימה; ירקות ופירות לפי ק״ג."));
 
   var head = el("div","pgrid phead");
   head.appendChild(el("span",null,"פריט"));
@@ -2107,17 +2173,37 @@ function paintPrices(sheet){
     }
     mt.setAttribute("dir","auto");
     main.appendChild(mt);
+
+    /* One line per chain with a deal on this product. */
+    chains.forEach(function(c){
+      var x = r.per[c.id];
+      if(!x) return;
+      var k = row.cost[c.id], d = dealNote(x.p, k.deal);
+      if(!d) return;
+      var dl = el("div","p-deal");
+      dl.dataset.on = k.deal ? "1" : "0";
+      dl.textContent = "🏷️ " + c.name + ": " + dealTerms(d, x.p.w) +
+        (d[5] ? " (עד " + d[5].slice(8,10) + "." + d[5].slice(5,7) + ")" : "") +
+        (k.deal ? "" : (d[4] ? " — לא לכמות שברשימה" : ""));
+      dl.setAttribute("dir","auto");
+      main.appendChild(dl);
+    });
     b.appendChild(main);
 
-    var vals = chains.map(function(c){ return r.per[c.id] ? r.per[c.id].p.price : null; });
+    var m = multiplier(it.qty);
+    var vals = chains.map(function(c){ return row.cost[c.id] ? row.cost[c.id].cost : null; });
     var have = vals.filter(function(v){ return v != null; });
     var low = have.length > 1 ? Math.min.apply(null, have) : null;
-    chains.forEach(function(c, i){
-      var x = r.per[c.id];
-      var cell = el("span","pp", x ? money(x.p.price) : "—");
-      if(x && low != null && x.p.price === low) cell.dataset.best = "1";
+    chains.forEach(function(c){
+      var x = r.per[c.id], k = row.cost[c.id];
+      var cell = el("span","pp", x ? money(k.cost) : "—");
+      if(x && low != null && Math.abs(k.cost - low) < 0.005) cell.dataset.best = "1";
       if(x && x.approx) cell.dataset.approx = "1";
-      if(x && x.p.w) cell.appendChild(el("small",null,"לק״ג"));
+      if(x && k.deal){
+        cell.dataset.deal = "1";
+        cell.appendChild(el("small","was", money(x.p.price * m)));
+      }
+      if(x && x.p.w) cell.appendChild(el("small",null, m === 1 ? "לק״ג" : m + " ק״ג"));
       b.appendChild(cell);
     });
     b.addEventListener("click", function(){ openPicker(it, openPrices); });
@@ -2183,9 +2269,18 @@ function openPicker(it, back){
           prices.chains.forEach(function(c){
             var p = g.by[c.id];
             var chip = el("span", p ? "k-p" : "k-p miss", c.name + " " + (p ? "₪" + money(p.price) : "—"));
+            if(p && p.deals) chip.className = "k-p sale";
             ps.appendChild(chip);
           });
           b.appendChild(ps);
+          prices.chains.forEach(function(c){
+            var p = g.by[c.id];
+            if(!p || !p.deals) return;
+            var dl = el("div","p-deal", "🏷️ " + c.name + ": " + dealTerms(p.deals[0], p.w));
+            dl.dataset.on = "1";
+            dl.setAttribute("dir","auto");
+            b.appendChild(dl);
+          });
           b.addEventListener("click", function(){
             setLink(sl, {key:g.key, name:g.name});
             flash("נבחר: " + g.name);
