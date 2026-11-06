@@ -296,6 +296,54 @@ button{cursor:pointer;background:none;border:none}
 .toggle[aria-pressed="true"] .knob{background:var(--urgent)}
 .toggle[aria-pressed="true"] .knob::after{inset-inline-start:19px}
 
+/* ---------- prices ---------- */
+.icon-btn.shekel{font-size:19px;font-weight:700;font-family:var(--body)}
+.totals{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:6px}
+.total{
+  background:var(--surface);border:1px solid var(--line);border-radius:12px;
+  padding:10px 8px;text-align:center;min-width:0;
+}
+.total .t-chain{font-size:12.5px;color:var(--ink-muted);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.total .t-sum{font-family:var(--mono);font-size:17px;font-weight:600;margin-top:2px;direction:ltr}
+.total .t-diff{font-size:11.5px;color:var(--ink-faint);margin-top:1px;direction:ltr}
+.total[data-best="1"]{border-color:var(--accent);background:var(--accent-soft)}
+.total[data-best="1"] .t-sum,.total[data-best="1"] .t-chain{color:var(--accent)}
+.pgrid{display:grid;grid-template-columns:minmax(0,1fr) repeat(3,58px);align-items:center;column-gap:6px}
+.phead{font-size:11.5px;color:var(--ink-faint);font-weight:700;padding:14px 2px 6px;border-bottom:1px solid var(--line-strong)}
+.phead span{text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prow{width:100%;text-align:start;padding:10px 2px;border-bottom:1px solid var(--line)}
+.prow:hover{background:var(--surface-2)}
+.prow .p-name{font-weight:500;overflow-wrap:anywhere}
+.prow .p-match{font-size:11.5px;color:var(--ink-faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prow .p-match b{font-weight:600;color:var(--accent)}
+.prow .p-match.none{color:var(--danger)}
+.pp{font-family:var(--mono);font-size:13px;text-align:center;direction:ltr;color:var(--ink-muted)}
+.pp[data-best="1"]{color:var(--accent);font-weight:700}
+.pp[data-approx="1"]::after{content:"≈";color:var(--ink-faint);font-size:10px;margin-inline-start:1px}
+.pp small{display:block;font-size:9.5px;color:var(--ink-faint);font-family:var(--body)}
+.pnote{font-size:12.5px;color:var(--ink-faint);margin:10px 0 0;line-height:1.55}
+.loading{padding:28px 0;text-align:center;color:var(--ink-faint);font-size:14px}
+.picker-res{display:flex;flex-direction:column;margin-top:4px}
+.pick{width:100%;text-align:start;padding:11px 2px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:4px}
+.pick:hover{background:var(--surface-2)}
+.pick[data-sel="1"]{background:var(--accent-soft)}
+.pick .k-name{font-weight:500}
+.pick .k-size{font-size:12px;color:var(--ink-faint);margin-inline-start:6px;font-weight:400}
+.pick .k-prices{display:flex;flex-wrap:wrap;gap:5px}
+.pick .k-p{font-size:11.5px;background:var(--surface-2);color:var(--ink-muted);padding:1px 7px;border-radius:999px}
+.pick .k-p.miss{opacity:.5}
+.field select{
+  background:var(--surface);border:1px solid var(--line);border-radius:11px;
+  padding:12px;font:inherit;font-size:16px;width:100%;color:var(--ink);
+}
+.linkfield{
+  display:flex;align-items:center;gap:10px;width:100%;text-align:start;
+  border:1px solid var(--line);background:var(--surface);border-radius:11px;padding:12px 14px;
+}
+.linkfield .lf-main{flex:1;min-width:0}
+.linkfield .lf-sub{display:block;font-size:12.5px;color:var(--ink-faint)}
+.linkfield .lf-go{color:var(--accent);font-weight:600;font-size:14px;flex:none}
+
 /* ---------- empty / done ---------- */
 .empty{
   margin-top:26px;background:var(--surface);border:1px solid var(--line);
@@ -443,6 +491,7 @@ button{cursor:pointer;background:none;border:none}
       <h1>Market Run</h1>
     </div>
     <div class="person" id="me-chip" hidden></div>
+    <button class="icon-btn shekel" id="btn-prices" aria-label="השוואת מחירים">₪</button>
     <button class="icon-btn" id="btn-settings" aria-label="הגדרות">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
         <path d="M4 7.5h9M19 7.5h1M4 16.5h4M14 16.5h6"/>
@@ -613,7 +662,8 @@ var state = {
   catalog: {},   /* slug -> {name, cat} — names you've added before */
   photos:  {},   /* slug -> photo, device-only mode; a synced list keeps
                     these in Firestore and fetches one only when needed */
-  packs:   {}    /* id   -> {name, items:[line]} — several items added at once */
+  packs:   {},   /* id   -> {name, items:[line]} — several items added at once */
+  links:   {}    /* slug -> {key, name} — the exact product an item means, for prices */
 };
 
 var db = null;
@@ -944,6 +994,7 @@ function loadLocal(){
       state.catalog = d.catalog || {};
       state.photos  = d.photos  || {};
       state.packs   = d.packs   || {};
+      state.links   = d.links   || {};
     }
   }catch(e){}
 }
@@ -1384,6 +1435,25 @@ function openEditItem(it){
     f5.appendChild(tg);
     sheet.appendChild(f5);
 
+    /* The exact product for price comparison — chosen in its own sheet and
+       saved straight away, by name. */
+    var f6 = el("div","field");
+    f6.appendChild(el("label",null,"מוצר להשוואת מחירים"));
+    var lf = el("button","linkfield");
+    lf.type = "button";
+    var lm = el("span","lf-main");
+    var link = state.links[slug(it.name)];
+    lm.appendChild(document.createTextNode(link ? link.name : "אוטומטי"));
+    lm.appendChild(el("span","lf-sub", link ? "נבחר ידנית" : "המוצר הקרוב ביותר לשם"));
+    lm.setAttribute("dir","auto");
+    lf.appendChild(lm);
+    lf.appendChild(el("span","lf-go", link ? "שינוי" : "בחירה"));
+    lf.addEventListener("click", function(){
+      openPicker(it, function(){ openEditItem(state.items[it.id] || it); });
+    });
+    f6.appendChild(lf);
+    sheet.appendChild(f6);
+
     /* Optional photo, for when the exact brand or pack matters. Staged like
        the other fields and only written on save. */
     var photo, photoBusy = false;   /* photo: undefined untouched, "" removed */
@@ -1737,6 +1807,400 @@ function openPackEditor(pack, draft){
   }, isNew ? "חבילה חדשה" : "עריכת חבילה");
 }
 
+/* ---------------------------------------------------------------- prices */
+
+/* The chains' own price lists, refreshed twice a day into prices/ by a
+   GitHub Action (scripts/fetch_prices.py). Each product is
+   [code, name, price, perUnit, perUnitOf, size, weighted]. Regular prices
+   only — sales aren't included. */
+
+var LS_BRANCHES = "marketrun.branches";   /* per device: chain -> store */
+
+/* What people write on a list vs. what the shelf label says. */
+var SYNONYMS = {
+  "גמבה":"פלפל אדום", "גמבות":"פלפל אדום",
+  "תפוא":"תפוח אדמה", "תפוחי אדמה":"תפוח אדמה", "תפודים":"תפוח אדמה"
+};
+
+var prices = null;          /* {index, chains, groups, list} once loaded */
+var pricesLoading = null;   /* promise while loading, keyed by branches */
+var pricesKey = "";
+var priceSheetPaint = null;
+
+function myBranches(){
+  try{ return JSON.parse(localStorage.getItem(LS_BRANCHES) || "{}") || {}; }
+  catch(e){ return {}; }
+}
+function setBranch(chain, store){
+  var b = myBranches();
+  b[chain] = store;
+  try{ localStorage.setItem(LS_BRANCHES, JSON.stringify(b)); }catch(e){}
+  prices = null; pricesLoading = null;
+}
+
+function getJSON(path){
+  return fetch(path, {cache:"no-cache"}).then(function(r){
+    if(!r.ok) throw new Error(path + " " + r.status);
+    return r.json();
+  });
+}
+function loadIndex(){ return getJSON("prices/index.json"); }
+
+/* Search text: final letters folded, punctuation dropped. */
+function pnorm(s){
+  return heNorm(String(s).toLowerCase()).replace(/[^\p{L}\p{N}% ]/gu," ")
+    .replace(/\s+/g," ").trim();
+}
+/* Singular and plural meet: עגבניות / עגבניה, מלפפונים / מלפפון. Text is
+   already through heNorm, so ים arrives as ימ. A bare final ה is left alone
+   — חלבה is not חלב. */
+function pstem(word){
+  if(word.length <= 3) return word;
+  return word.replace(/(יות|יה)$/,"י").replace(/(ימ|ות)$/,"");
+}
+function pstemAll(s){ return s.split(" ").map(pstem).join(" "); }
+
+/* Products are grouped across chains by barcode. Produce is sold by weight
+   under each chain's own code, so those group by name instead; short codes
+   are chain-internal and never shared. */
+function groupKey(chain, p){
+  if(p[6]) return "w:" + pstemAll(pnorm(p[1]));
+  if(String(p[0]).length < 8) return "c:" + chain + ":" + p[0];
+  return p[0];
+}
+
+function loadPrices(){
+  var chosen = myBranches();
+  var key = JSON.stringify(chosen);
+  if(prices && pricesKey === key) return Promise.resolve(prices);
+  if(pricesLoading && pricesKey === key) return pricesLoading;
+  pricesKey = key;
+  pricesLoading = loadIndex().then(function(index){
+    var chains = index.chains.map(function(c){
+      var store = chosen[c.id];
+      var br = c.branches.filter(function(b){ return b.store === store; })[0] ||
+               c.branches.filter(function(b){ return b.store === c.default; })[0] ||
+               c.branches[0];
+      return {id:c.id, name:c.name, store:br.store, branch:br.name, file:br.file, priced:br.priced};
+    });
+    return Promise.all(chains.map(function(c){ return getJSON("prices/" + c.file); }))
+      .then(function(files){
+        var groups = new Map();
+        files.forEach(function(f, i){
+          var cid = chains[i].id;
+          f.items.forEach(function(p){
+            var k = groupKey(cid, p);
+            var g = groups.get(k);
+            if(!g){
+              g = {key:k, name:p[1], n:pnorm(p[1]), size:p[5], weighted:!!p[6], by:{}};
+              g.stem = pstemAll(g.n);
+              groups.set(k, g);
+            }
+            var cur = g.by[cid];
+            /* the same thing listed twice: keep the cheaper */
+            if(!cur || p[2] < cur.price){
+              g.by[cid] = {code:p[0], name:p[1], price:p[2], unit:p[3], unitOf:p[4], size:p[5], w:!!p[6]};
+            }
+            /* the longest name is the least truncated one */
+            if(p[1].length > g.name.length && !p[6]){ g.name = p[1]; g.n = pnorm(p[1]); g.stem = pstemAll(g.n); }
+          });
+        });
+        var list = Array.from(groups.values());
+        list.forEach(function(g){ g.cover = Object.keys(g.by).length; });
+        prices = {index:index, chains:chains, groups:groups, list:list};
+        return prices;
+      });
+  });
+  pricesLoading.catch(function(){ pricesLoading = null; });
+  return pricesLoading;
+}
+
+/* Ranked products for a query. In order: the exact name; a name that opens
+   with the word (חלב 3% before שוקו חלב); every word whole (לחם before
+   לחמית); sold by weight (fresh produce); what the most chains carry; the plainest (shortest) name; the
+   cheapest. */
+function searchProducts(q, limit){
+  var qn = pnorm(q);
+  if(SYNONYMS[qn]) qn = pnorm(SYNONYMS[qn]);
+  if(!qn || !prices) return [];
+  var stems = qn.split(" ").map(pstem).filter(Boolean);
+  var qstem = stems.join(" ");
+  /* For fruit and veg a final ה is noise too (בננות / בננה); elsewhere it
+     isn't (חלב / חלבה), so that only loosens for produce. */
+  var produce = guessCat(qn) === "produce";
+  var loose = function(x){ return produce ? x.replace(/ה( |$)/g,"$1") : x; };
+  stems = stems.map(loose);
+  qstem = loose(qstem);
+  var hits = [];
+  for(var i=0;i<prices.list.length;i++){
+    var g = prices.list[i], gs = loose(g.stem), hay = " " + gs;
+    var ok = true;
+    for(var j=0;j<stems.length;j++){
+      if(hay.indexOf(" " + stems[j]) === -1){ ok = false; break; }
+    }
+    if(!ok) continue;
+    var words = gs.split(" ");
+    hits.push({g:g, rank:[
+      gs === qstem ? 0 : 1,
+      words[0] === stems[0] ? 0 : 1,
+      stems.every(function(x){ return words.indexOf(x) !== -1; }) ? 0 : 1,
+      (produce && g.weighted) ? 0 : 1,   /* loose produce, not a bag of chips */
+      -g.cover,
+      gs.indexOf(stems[0]) === 0 ? 0 : 1,
+      g.n.length,
+      Math.min.apply(null, Object.keys(g.by).map(function(c){ return g.by[c].price; }))
+    ]});
+  }
+  hits.sort(function(a,b){
+    for(var k=0;k<a.rank.length;k++){
+      if(a.rank[k] !== b.rank[k]) return a.rank[k] - b.rank[k];
+    }
+    return 0;
+  });
+  return hits.slice(0, limit || 40).map(function(h){ return h.g; });
+}
+
+/* What an item costs at each chain. A chosen product is used exactly; with
+   none, the best match by name, and a chain that lacks it gets its own
+   nearest match, marked approximate. */
+function resolveItem(it){
+  var link = state.links[slug(it.name)];
+  var per = {}, g = null;
+  if(link){
+    g = prices.groups.get(link.key) || null;
+    prices.chains.forEach(function(c){
+      per[c.id] = (g && g.by[c.id]) ? {p:g.by[c.id], approx:false} : null;
+    });
+    return {g:g, linked:link, per:per};
+  }
+  var res = searchProducts(it.name, 60);
+  g = res[0] || null;
+  prices.chains.forEach(function(c){
+    if(g && g.by[c.id]){ per[c.id] = {p:g.by[c.id], approx:false}; return; }
+    var alt = res.filter(function(r){ return r.by[c.id]; })[0];
+    per[c.id] = alt ? {p:alt.by[c.id], approx:true} : null;
+  });
+  return {g:g, linked:null, per:per};
+}
+
+function money(n){ return n.toFixed(2).replace(/\.00$/,""); }
+function shortTime(iso){
+  var d = new Date(String(iso || "").replace(/Z$/,":00Z"));
+  if(isNaN(d)) return "";
+  var p = function(n){ return (n < 10 ? "0" : "") + n; };
+  return p(d.getDate()) + "." + p(d.getMonth() + 1) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+}
+
+async function setLink(sl, v){
+  if(v) state.links[sl] = v; else delete state.links[sl];
+  if(local){ saveLocal(); return; }
+  try{
+    if(v) await db.doc("links/" + sl).set(v);
+    else await db.doc("links/" + sl).delete();
+  }catch(e){ handleWriteError(e); }
+}
+
+function refreshPrices(){
+  if(priceSheetPaint && !document.getElementById("veil").hidden) priceSheetPaint();
+}
+
+function priceLoading(sheet, title){
+  sheetHead(sheet, title);
+  sheet.appendChild(el("div","loading","טוען מחירים…"));
+}
+function priceError(sheet){
+  sheet.appendChild(el("div","loading","לא הצלחנו לטעון את המחירים. בדקו את החיבור ונסו שוב."));
+}
+
+/* ₪ — the whole list, priced at each chain. */
+function openPrices(){
+  openSheet(function(sheet){
+    priceLoading(sheet, "השוואת מחירים");
+    var gen = sheetGen;
+    loadPrices().then(function(){
+      if(!stillOpen(gen)) return;
+      priceSheetPaint = function(){ paintPrices(sheet); };
+      priceSheetPaint();
+    }, function(){ if(stillOpen(gen)) priceError(sheet); });
+  }, "השוואת מחירים");
+}
+
+function paintPrices(sheet){
+  sheet.textContent = "";
+  sheetHead(sheet, "השוואת מחירים");
+  var chains = prices.chains;
+
+  var sub = el("div","sublabel");
+  sub.appendChild(document.createTextNode(
+    chains.map(function(c){ return c.name + " " + c.branch; }).join(" · ") +
+    ". מחירים רגילים, בלי מבצעים. עודכן " + shortTime(prices.index.updated) + ". "));
+  var chg = el("button","linkbtn","החלפת סניפים");
+  chg.type = "button";
+  chg.style.padding = "0";
+  chg.style.fontSize = "13px";
+  chg.addEventListener("click", openSettings);
+  sub.appendChild(chg);
+  sheet.appendChild(sub);
+
+  var items = sortedItems();
+  if(!items.length){
+    sheet.appendChild(el("div","loading","הרשימה ריקה — אין מה להשוות."));
+    return;
+  }
+
+  var rows = items.map(function(it){ return {it:it, r:resolveItem(it)}; });
+
+  /* Totals only over items every chain has, so the comparison is fair.
+     Sold by weight counts as 1 kg (or the quantity, if it's a number). */
+  var sums = {}, counted = 0, skipped = 0;
+  chains.forEach(function(c){ sums[c.id] = 0; });
+  rows.forEach(function(row){
+    var all = chains.every(function(c){ return row.r.per[c.id]; });
+    if(!all){ skipped++; return; }
+    counted++;
+    var m = multiplier(row.it.qty);
+    chains.forEach(function(c){ sums[c.id] += row.r.per[c.id].p.price * m; });
+  });
+
+  var totals = el("div","totals");
+  var best = counted ? Math.min.apply(null, chains.map(function(c){ return sums[c.id]; })) : 0;
+  chains.forEach(function(c){
+    var t = el("div","total");
+    t.dataset.best = (counted && sums[c.id] === best) ? "1" : "0";
+    t.appendChild(el("div","t-chain", c.name));
+    t.appendChild(el("div","t-sum", counted ? "₪" + money(sums[c.id]) : "—"));
+    var d = sums[c.id] - best;
+    t.appendChild(el("div","t-diff", !counted ? "" : (d > 0.004 ? "+₪" + money(d) : "הכי זול")));
+    totals.appendChild(t);
+  });
+  sheet.appendChild(totals);
+
+  var note = counted
+    ? "הסכום כולל " + counted + " מתוך " + items.length + " פריטים — רק מה שנמצא בכל שלוש הרשתות."
+    : "אין עדיין פריט שנמצא בכל שלוש הרשתות.";
+  if(skipped) note += " פריט בלי מחיר באחת הרשתות לא נספר.";
+  sheet.appendChild(el("p","pnote", note + " ירקות ופירות נספרים לפי ק״ג."));
+
+  var head = el("div","pgrid phead");
+  head.appendChild(el("span",null,"פריט"));
+  head.firstChild.style.textAlign = "start";
+  chains.forEach(function(c){ head.appendChild(el("span",null,c.name)); });
+  sheet.appendChild(head);
+
+  rows.forEach(function(row){
+    var it = row.it, r = row.r;
+    var b = el("button","pgrid prow");
+    b.type = "button";
+    var main = el("div");
+    var nm = el("div","p-name", it.name + (it.qty ? " ×" + it.qty : ""));
+    nm.setAttribute("dir","auto");
+    main.appendChild(nm);
+    var mt = el("div","p-match");
+    if(r.linked){
+      mt.appendChild(el("b",null,"✓ "));
+      mt.appendChild(document.createTextNode(r.g ? r.g.name : r.linked.name + " (לא נמצא כרגע)"));
+    } else if(r.g){
+      mt.appendChild(document.createTextNode("אוטומטי: " + r.g.name + (r.g.size ? " · " + r.g.size : "")));
+    } else {
+      mt.className = "p-match none";
+      mt.textContent = "לא נמצא — הקישו לבחירה";
+    }
+    mt.setAttribute("dir","auto");
+    main.appendChild(mt);
+    b.appendChild(main);
+
+    var vals = chains.map(function(c){ return r.per[c.id] ? r.per[c.id].p.price : null; });
+    var have = vals.filter(function(v){ return v != null; });
+    var low = have.length > 1 ? Math.min.apply(null, have) : null;
+    chains.forEach(function(c, i){
+      var x = r.per[c.id];
+      var cell = el("span","pp", x ? money(x.p.price) : "—");
+      if(x && low != null && x.p.price === low) cell.dataset.best = "1";
+      if(x && x.approx) cell.dataset.approx = "1";
+      if(x && x.p.w) cell.appendChild(el("small",null,"לק״ג"));
+      b.appendChild(cell);
+    });
+    b.addEventListener("click", function(){ openPicker(it, openPrices); });
+    sheet.appendChild(b);
+  });
+
+  sheet.appendChild(el("p","pnote","≈ — המוצר המדויק לא נמצא ברשת הזו, מוצג הדומה ביותר. הקישו על פריט כדי לבחור את המוצר המדויק; הבחירה נשמרת לפי השם, לשניכם."));
+}
+
+/* Pick the exact product an item means. back() returns to wherever it was
+   opened from. */
+function openPicker(it, back){
+  var sl = slug(it.name);
+  openSheet(function(sheet){
+    priceLoading(sheet, "בחירת מוצר");
+    var gen = sheetGen;
+    loadPrices().then(function(){ if(stillOpen(gen)) paint(); },
+                      function(){ if(stillOpen(gen)) priceError(sheet); });
+
+    function paint(){
+      sheet.textContent = "";
+      sheetHead(sheet, "בחירת מוצר: " + it.name);
+      sheet.appendChild(el("div","sublabel","המוצר שישמש להשוואת מחירים בכל פעם שתוסיפו " + it.name + "."));
+
+      var f = el("div","field");
+      var inp = el("input");
+      inp.type = "search"; inp.name = "product-search";
+      inp.value = it.name;
+      inp.setAttribute("dir","auto");
+      inp.setAttribute("autocomplete","off");
+      inp.setAttribute("aria-label","חיפוש מוצר");
+      f.appendChild(inp);
+      sheet.appendChild(f);
+
+      var cur = state.links[sl];
+      if(cur){
+        var auto = el("button","linkbtn","חזרה לבחירה אוטומטית");
+        auto.type = "button";
+        auto.addEventListener("click", function(){
+          setLink(sl, null);
+          flash("חזר לבחירה אוטומטית.");
+          back();
+        });
+        sheet.appendChild(auto);
+      }
+
+      var res = el("div","picker-res");
+      sheet.appendChild(res);
+
+      var draw = function(){
+        res.textContent = "";
+        var hits = searchProducts(inp.value, 40);
+        if(!hits.length){ res.appendChild(el("div","loading","לא נמצא. נסו מילה אחרת.")); return; }
+        hits.forEach(function(g){
+          var b = el("button","pick");
+          b.type = "button";
+          if(cur && cur.key === g.key) b.dataset.sel = "1";
+          var nm = el("div","k-name", g.name);
+          nm.setAttribute("dir","auto");
+          if(g.size || g.weighted) nm.appendChild(el("span","k-size", g.weighted ? "לק״ג" : g.size));
+          b.appendChild(nm);
+          var ps = el("div","k-prices");
+          prices.chains.forEach(function(c){
+            var p = g.by[c.id];
+            var chip = el("span", p ? "k-p" : "k-p miss", c.name + " " + (p ? "₪" + money(p.price) : "—"));
+            ps.appendChild(chip);
+          });
+          b.appendChild(ps);
+          b.addEventListener("click", function(){
+            setLink(sl, {key:g.key, name:g.name});
+            flash("נבחר: " + g.name);
+            back();
+          });
+          res.appendChild(b);
+        });
+      };
+      var t = null;
+      inp.addEventListener("input", function(){ clearTimeout(t); t = setTimeout(draw, 120); });
+      draw();
+    }
+  }, "בחירת מוצר");
+}
+
 /* The dock carries one action, and only once there's something to clear. */
 function renderDock(){
   var dock = document.getElementById("dock");
@@ -1787,12 +2251,18 @@ function setMyName(name){
 
 /* ---------------------------------------------------------------- sheets */
 
+/* Bumped on every sheet, so a slow load knows if its sheet is gone. */
+var sheetGen = 0;
+function stillOpen(gen){ return gen === sheetGen && !document.getElementById("veil").hidden; }
+
 function openSheet(build, label){
   var veil  = document.getElementById("veil");
   var sheet = document.getElementById("sheet");
   sheet.textContent = "";
   sheet.setAttribute("aria-label", label);
   packSheetPaint = null;
+  priceSheetPaint = null;
+  sheetGen++;
   build(sheet);
   veil.hidden = false;
 }
@@ -1858,6 +2328,38 @@ function openSettings(){
     sheet.appendChild(el("div","sublabel","מופיע כאות קטנה ליד כל מה שאתם מוסיפים, כדי שתדעו מי הוסיף מה. נשמר במכשיר הזה בלבד."));
 
     sheet.appendChild(el("div","sublabel","כתיבת פריט מוסיפה אותו. כתיבת הוראה — תוריד חלב, מחיקת כל המסומנים — מבצעת אותה במקום. סימן קריאה — ״חלב!״ — מסמן את הפריט כדחוף."));
+
+    /* Which branch each chain is priced at — per device. */
+    var bf = el("div","field");
+    bf.style.marginTop = "14px";
+    bf.appendChild(el("label",null,"סניפים להשוואת מחירים"));
+    var bwrap = el("div");
+    bwrap.appendChild(el("div","sublabel","טוען סניפים…"));
+    bf.appendChild(bwrap);
+    sheet.appendChild(bf);
+    var gen = sheetGen;
+    loadIndex().then(function(index){
+      if(!stillOpen(gen)) return;
+      bwrap.textContent = "";
+      var chosen = myBranches();
+      index.chains.forEach(function(c){
+        var sel = el("select");
+        sel.name = "branch-" + c.id;
+        sel.setAttribute("aria-label","סניף " + c.name);
+        sel.style.marginBottom = "8px";
+        c.branches.forEach(function(b){
+          var o = el("option", null, c.name + " — " + b.name);
+          o.value = b.store;
+          if(b.store === (chosen[c.id] || c.default)) o.selected = true;
+          sel.appendChild(o);
+        });
+        sel.addEventListener("change", function(){
+          setBranch(c.id, sel.value);
+          flash("הסניף עודכן.");
+        });
+        bwrap.appendChild(sel);
+      });
+    }, function(){ if(stillOpen(gen)) bwrap.firstChild.textContent = "אין חיבור — לא ניתן לטעון סניפים."; });
 
     var pk = el("button","linkbtn","חבילות — כמה פריטים בלחיצה אחת");
     pk.type = "button";
@@ -2022,6 +2524,7 @@ document.addEventListener("click", function(e){
   if(!box.hidden && !e.target.closest(".addwrap")) closeSuggest();
 });
 document.getElementById("btn-settings").addEventListener("click", openSettings);
+document.getElementById("btn-prices").addEventListener("click", openPrices);
 document.getElementById("veil").addEventListener("click", function(e){
   if(e.target.id === "veil") closeSheet();
 });
@@ -2137,6 +2640,16 @@ render();
     state.packs = next;
     render();
     refreshPackSheet();
+  }, onErr);
+
+  db.collection("links").onSnapshot(function(snap){
+    var next = {};
+    snap.docs.forEach(function(doc){
+      var v = doc.data() || {};
+      if(v.key) next[doc.id] = {key:String(v.key), name:String(v.name || "")};
+    });
+    state.links = next;
+    refreshPrices();
   }, onErr);
 })();
 

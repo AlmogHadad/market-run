@@ -55,8 +55,10 @@ self.addEventListener("fetch", function(e){
              host === "www.gstatic.com";
   if(!ours) return;
 
-  /* The page: network first, so a new version lands the moment there's signal. */
-  if(req.mode === "navigate" || url.pathname === "/" || /\/index\.html$/.test(url.pathname)){
+  /* The page and the price lists: network first, so a new version lands the
+     moment there's signal. Prices are refreshed twice a day. */
+  if(req.mode === "navigate" || url.pathname === "/" || /\/index\.html$/.test(url.pathname) ||
+     /^\/prices\//.test(url.pathname)){
     e.respondWith(
       fetch(req).then(function(res){
         var copy = res.clone();
