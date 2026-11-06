@@ -44,6 +44,8 @@ img{max-width:100%}
   --accent-ink:#FFFFFF;
   --accent-soft:#E2EFE7;
   --danger:#9B3220;
+  --urgent:#B8471F;
+  --urgent-soft:#F8E6DC;
   --shadow:0 1px 2px rgba(25,28,22,.06), 0 8px 24px rgba(25,28,22,.06);
   --dock-shadow:0 -1px 0 var(--line), 0 -10px 24px rgba(25,28,22,.05);
 
@@ -68,6 +70,8 @@ img{max-width:100%}
     --accent-ink:#0F2218;
     --accent-soft:#1E2E24;
     --danger:#E0715A;
+    --urgent:#F08A5D;
+    --urgent-soft:#3A241A;
     --shadow:0 1px 2px rgba(0,0,0,.45), 0 8px 24px rgba(0,0,0,.35);
     --dock-shadow:0 -1px 0 var(--line), 0 -10px 24px rgba(0,0,0,.35);
   }
@@ -86,6 +90,8 @@ img{max-width:100%}
   --accent-ink:#0F2218;
   --accent-soft:#1E2E24;
   --danger:#E0715A;
+  --urgent:#F08A5D;
+  --urgent-soft:#3A241A;
   --shadow:0 1px 2px rgba(0,0,0,.45), 0 8px 24px rgba(0,0,0,.35);
   --dock-shadow:0 -1px 0 var(--line), 0 -10px 24px rgba(0,0,0,.35);
 }
@@ -233,6 +239,53 @@ button{cursor:pointer;background:none;border:none}
 }
 .r-thumb:hover{border-color:var(--line-strong)}
 .r-thumb img{display:block;width:100%;height:100%;object-fit:cover}
+
+/* Urgent: its own section at the top, a tag on the row. */
+.aisle.urgent .aisle-head{border-bottom-color:var(--urgent)}
+.aisle.urgent .aisle-head h2{color:var(--urgent)}
+.tag-urgent{
+  font-size:11px;font-weight:700;color:var(--urgent);background:var(--urgent-soft);
+  padding:1px 7px;border-radius:999px;
+}
+.row[data-done="1"] .tag-urgent{display:none}
+
+/* ---------- packs ---------- */
+.packs{display:flex;gap:7px;overflow-x:auto;padding:12px 0 2px;scrollbar-width:none}
+.packs::-webkit-scrollbar{display:none}
+.pack{
+  flex:none;display:flex;align-items:center;gap:6px;
+  border:1px solid var(--line-strong);border-radius:999px;background:var(--surface);
+  padding:7px 13px;font-size:14px;font-weight:500;color:var(--ink-muted);white-space:nowrap;
+}
+.pack:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.pack .n{font-family:var(--mono);font-size:11.5px;color:var(--ink-faint)}
+.pack.edit{border-style:dashed;color:var(--ink-faint)}
+.packlist{display:flex;flex-direction:column;margin-bottom:6px}
+.packrow{
+  display:flex;align-items:center;gap:10px;padding:12px 2px;
+  border-bottom:1px solid var(--line);text-align:start;width:100%;
+}
+.packrow .pr-main{flex:1;min-width:0}
+.packrow .pr-name{font-weight:600}
+.packrow .pr-items{font-size:13px;color:var(--ink-faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.field textarea{
+  background:var(--surface);border:1px solid var(--line);border-radius:11px;
+  padding:14px;font:inherit;font-size:16px;width:100%;min-height:150px;resize:vertical;line-height:1.6;
+}
+.field textarea:focus{border-color:var(--accent);outline:none}
+
+/* On/off switch in the edit sheet. */
+.toggle{
+  display:flex;align-items:center;gap:12px;width:100%;text-align:start;
+  border:1px solid var(--line);background:var(--surface);border-radius:11px;padding:12px 14px;
+}
+.toggle .t-main{flex:1}
+.toggle .t-sub{display:block;font-size:12.5px;color:var(--ink-faint)}
+.toggle .knob{width:40px;height:24px;border-radius:999px;background:var(--line-strong);position:relative;flex:none;transition:background .15s}
+.toggle .knob::after{content:"";position:absolute;top:3px;inset-inline-start:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:inset-inline-start .15s}
+.toggle[aria-pressed="true"]{border-color:var(--urgent);background:var(--urgent-soft)}
+.toggle[aria-pressed="true"] .knob{background:var(--urgent)}
+.toggle[aria-pressed="true"] .knob::after{inset-inline-start:19px}
 
 /* ---------- empty / done ---------- */
 .empty{
@@ -400,6 +453,8 @@ button{cursor:pointer;background:none;border:none}
       <div class="suggest" id="suggest" hidden></div>
     </div>
 
+    <div class="packs" id="packs" hidden></div>
+
     <div class="progress" id="progress" hidden>
       <div class="pbar"><i id="pbar-fill" style="width:0%"></i></div>
       <div class="ptext" id="ptext"></div>
@@ -545,8 +600,9 @@ var SCOPE_TAILS = [
 var state = {
   items:   {},   /* id   -> item */
   catalog: {},   /* slug -> {name, cat} — names you've added before */
-  photos:  {}    /* slug -> photo, device-only mode; a synced list keeps
+  photos:  {},   /* slug -> photo, device-only mode; a synced list keeps
                     these in Firestore and fetches one only when needed */
+  packs:   {}    /* id   -> {name, items:[line]} — several items added at once */
 };
 
 var db = null;
@@ -636,10 +692,17 @@ function catLabel(key){
   return "שונות";
 }
 
-/* "2 חלב", "חלב x2", "1kg עגבניות" -> {name, qty} */
+/* Marks an item urgent as it's typed: "חלב!", "!חלב", "חלב דחוף". */
+var URGENT_TAIL = /\s+(דחוף|דחופה|דחופים|דחופות|urgent)$/i;
+
+/* "2 חלב", "חלב x2", "1kg עגבניות" -> {name, qty, urgent} */
 function parseEntry(raw){
   var s = String(raw).trim().replace(/\s+/g," ");
-  var qty = "";
+  var qty = "", urgent = false;
+  if(/^!+|!+$/.test(s)){ urgent = true; s = s.replace(/^!+|!+$/g,"").trim(); }
+  if(URGENT_TAIL.test(s) && s.replace(URGENT_TAIL,"").trim()){
+    urgent = true; s = s.replace(URGENT_TAIL,"").trim();
+  }
   var m = s.match(/\s*[x×*]\s*(\d+(?:\.\d+)?)$/i);
   if(m){ qty = m[1]; s = s.slice(0, m.index).trim(); }
   if(!qty){
@@ -649,7 +712,7 @@ function parseEntry(raw){
       s = m2[3].trim();
     }
   }
-  return {name:s, qty:qty};
+  return {name:s, qty:qty, urgent:urgent};
 }
 function multiplier(qty){
   var q = String(qty || "").trim();
@@ -869,6 +932,7 @@ function loadLocal(){
       state.items   = d.items   || {};
       state.catalog = d.catalog || {};
       state.photos  = d.photos  || {};
+      state.packs   = d.packs   || {};
     }
   }catch(e){}
 }
@@ -961,9 +1025,14 @@ async function deleteIds(ids){
 
 /* --------------------------------------------------------------- actions */
 
-function addItem(rawName, presetQty){
+/* opts.pack: adding as part of a pack — no toast, and an item that's already
+   waiting on the list is left alone rather than bumped (the pack means "make
+   sure these are on it", not "buy another"). Returns what changed, for undo:
+   {added:id} or {prev:item}, or null if nothing did. */
+function addItem(rawName, presetQty, opts){
+  opts = opts || {};
   var parsed = parseEntry(rawName);
-  if(!parsed.name) return;
+  if(!parsed.name) return null;
   var sl = slug(parsed.name);
   var known = state.catalog[sl];
 
@@ -973,13 +1042,20 @@ function addItem(rawName, presetQty){
     if(slug(state.items[k].name) === sl) existing = state.items[k];
   });
   if(existing){
-    var next = Object.assign({}, existing, {
-      qty: String(multiplier(existing.qty) + multiplier(presetQty || parsed.qty || "1")),
-      done: false
-    });
+    var next = Object.assign({}, existing, {done: false});
+    if(parsed.urgent) next.urgent = true;
+    if(opts.pack){
+      if(!existing.done && (!parsed.urgent || existing.urgent)) return null;
+    } else {
+      next.qty = String(multiplier(existing.qty) + multiplier(presetQty || parsed.qty || "1"));
+    }
     writeItem(next);
-    flash("כבר ברשימה — עכשיו " + next.qty + ".");
-    return;
+    if(!opts.pack){
+      flash(parsed.urgent && !existing.urgent
+        ? "כבר ברשימה — סומן כדחוף, עכשיו " + next.qty + "."
+        : "כבר ברשימה — עכשיו " + next.qty + ".");
+    }
+    return {prev: existing};
   }
 
   var cat = (known && known.cat) || guessCat(parsed.name);
@@ -992,6 +1068,7 @@ function addItem(rawName, presetQty){
     done: false,
     ts: Date.now()
   };
+  if(parsed.urgent) item.urgent = true;
   writeItem(item);
 
   /* Remember the name so it autocompletes next time — or, if it's been
@@ -1000,10 +1077,44 @@ function addItem(rawName, presetQty){
   else attachRemembered(item.id, sl);
 
   /* Say where it landed, with one tap to move it if the guess was wrong. */
-  flash(catIcon(cat) + " נוסף ל" + catLabel(cat), {
-    label: "עריכה",
-    run: function(){ openEditItem(state.items[item.id] || item); }
+  if(!opts.pack){
+    flash((item.urgent ? "🔥 נוסף כדחוף, ב" : catIcon(cat) + " נוסף ל") + catLabel(cat), {
+      label: "עריכה",
+      run: function(){ openEditItem(state.items[item.id] || item); }
+    });
+  }
+  return {added: item.id};
+}
+
+/* Adds every line of a pack, then offers one undo for the lot. */
+function addPack(pack){
+  var changes = [];
+  pack.items.forEach(function(line){
+    var c = addItem(line, null, {pack:true});
+    if(c) changes.push(c);
   });
+  if(!changes.length){ flash("כל מה שב" + pack.name + " כבר ברשימה."); return; }
+  var n = changes.length;
+  flash((n === 1 ? "נוסף פריט אחד" : "נוספו " + n + " פריטים") + " · " + pack.name, {
+    label: "ביטול",
+    run: function(){ undoPack(changes); }
+  });
+}
+async function undoPack(changes){
+  var del = [], back = [];
+  changes.forEach(function(c){
+    if(c.added){ if(state.items[c.added]) del.push(c.added); }
+    else if(state.items[c.prev.id]) back.push(c.prev);
+  });
+  back.forEach(function(it){ state.items[it.id] = it; });
+  await deleteIds(del);   /* renders and saves for both */
+  if(!local){
+    for(var i=0;i<back.length;i++){
+      try{ await db.doc("items/" + back[i].id).set(back[i]); }
+      catch(e){ handleWriteError(e); return; }
+    }
+  }
+  flash("בוטל.");
 }
 
 function toggleDone(id){
@@ -1024,7 +1135,7 @@ function clearChecked(){
 
 /* Renaming a mistyped item also drops the typo from autocomplete.
    photo: undefined leaves it alone, "" removes it, a data URL replaces it. */
-function renameItem(id, newName, newQty, cat, photo){
+function renameItem(id, newName, newQty, cat, photo, urgent){
   var cur = state.items[id];
   if(!cur){ flash("הפריט כבר לא ברשימה."); return; }
 
@@ -1043,6 +1154,7 @@ function renameItem(id, newName, newQty, cat, photo){
       cat: cat,
       done: false
     });
+    if(urgent || twin.urgent) merged.urgent = true;
     /* The photo you were editing wins; otherwise the twin keeps its own. */
     var mine = (photo === undefined) ? cur.img : photo;
     if(mine) merged.img = mine;
@@ -1054,6 +1166,7 @@ function renameItem(id, newName, newQty, cat, photo){
   }
 
   var next = Object.assign({}, cur, {name:newName, qty:newQty, cat:cat});
+  if(urgent) next.urgent = true; else delete next.urgent;
   if(photo === "") delete next.img;
   else if(photo) next.img = photo;
   writeItem(next);
@@ -1079,6 +1192,7 @@ function renameItem(id, newName, newQty, cat, photo){
 /* ---------------------------------------------------------------- render */
 
 function render(){
+  renderPacks();
   renderProgress();
   renderList();
   renderDock();
@@ -1107,7 +1221,20 @@ function renderList(){
 
   if(!items.length){ body.appendChild(emptyState()); return; }
 
-  groupByAisle(items).forEach(function(g){
+  /* Urgent items leave their aisle for a section of their own up top, so a
+     quick run can stop there. */
+  var urgent = items.filter(function(it){ return it.urgent; });
+  if(urgent.length){
+    var ug = {name:"דחוף", icon:"🔥", items:urgent};
+    var uLeft = urgent.filter(function(i){ return !i.done; }).length;
+    var uh = aisleHead(ug, uLeft);
+    uh.classList.add("urgent");
+    body.appendChild(uh);
+    urgent.slice().sort(function(a,b){ return (a.done?1:0) - (b.done?1:0); })
+      .forEach(function(it){ body.appendChild(itemRow(it, true)); });
+  }
+
+  groupByAisle(items.filter(function(it){ return !it.urgent; })).forEach(function(g){
     /* unchecked first inside each aisle, so what's left floats to the top */
     var ordered = g.items.slice().sort(function(a,b){ return (a.done?1:0) - (b.done?1:0); });
     var left = g.items.filter(function(i){ return !i.done; }).length;
@@ -1138,7 +1265,9 @@ function aisleHead(g, left){
   return h;
 }
 
-function itemRow(it){
+/* inUrgent: drawn in the urgent section, so it says which aisle it's from
+   instead of repeating that it's urgent. */
+function itemRow(it, inUrgent){
   var row = el("div","row");
   row.dataset.done = it.done ? "1" : "0";
 
@@ -1157,6 +1286,8 @@ function itemRow(it){
   main.appendChild(nm);
 
   var sub = el("div","r-sub");
+  if(inUrgent) sub.appendChild(el("span",null, catIcon(it.cat) + " " + catLabel(it.cat)));
+  else if(it.urgent) sub.appendChild(el("span","tag-urgent","דחוף"));
   if(it.qty) sub.appendChild(el("span","qty", it.qty));
   if(it.addedBy){
     var dot = el("span","person");
@@ -1221,6 +1352,21 @@ function openEditItem(it){
     i2.setAttribute("dir","auto");
     f2.appendChild(l2); f2.appendChild(i2);
     sheet.appendChild(f2);
+
+    var urgent = !!it.urgent;
+    var f5 = el("div","field");
+    var tg = el("button","toggle");
+    tg.type = "button";
+    var tm = el("span","t-main");
+    tm.appendChild(document.createTextNode("🔥 דחוף"));
+    tm.appendChild(el("span","t-sub","יופיע למעלה, לפני כל המדפים."));
+    tg.appendChild(tm);
+    tg.appendChild(el("span","knob"));
+    var paintUrgent = function(){ tg.setAttribute("aria-pressed", urgent ? "true" : "false"); };
+    tg.addEventListener("click", function(){ urgent = !urgent; paintUrgent(); });
+    paintUrgent();
+    f5.appendChild(tg);
+    sheet.appendChild(f5);
 
     /* Optional photo, for when the exact brand or pack matters. Staged like
        the other fields and only written on save. */
@@ -1309,7 +1455,7 @@ function openEditItem(it){
       /* A fixed typo should land in the right aisle unless you picked one. */
       var cat = catTouched ? chosenCat : (renamed ? guessCat(newName) : (it.cat || "other"));
       closeSheet();
-      renameItem(it.id, newName, i2.value.trim(), cat, photo);
+      renameItem(it.id, newName, i2.value.trim(), cat, photo, urgent);
     };
     var onEnter = function(e){ if(e.key === "Enter"){ e.preventDefault(); save(); } };
     i1.addEventListener("keydown", onEnter);
@@ -1361,8 +1507,17 @@ function emptyState(){
   hint.appendChild(el("span","kbd","תוריד מלפפון מהרשימה"));
   hint.appendChild(document.createTextNode(" או "));
   hint.appendChild(el("span","kbd","מחיקת כל המסומנים"));
+  hint.appendChild(document.createTextNode(". סימן קריאה מסמן דחוף — "));
+  hint.appendChild(el("span","kbd","חלב!"));
   hint.appendChild(document.createTextNode("."));
   e.appendChild(hint);
+
+  if(!sortedPacks().length){
+    var pk = el("button","linkbtn","+ חבילה: כמה פריטים בלחיצה אחת (למשל ירקות בסיס)");
+    pk.type = "button";
+    pk.addEventListener("click", openPacks);
+    e.appendChild(pk);
+  }
 
   var chips = el("div","chips");
   QUICK_ADD.forEach(function(q){
@@ -1377,6 +1532,193 @@ function emptyState(){
   });
   e.appendChild(chips);
   return e;
+}
+
+/* ----------------------------------------------------------------- packs */
+
+function sortedPacks(){
+  return Object.keys(state.packs).map(function(k){
+    return Object.assign({id:k}, state.packs[k]);
+  }).sort(function(a,b){ return (a.ts||0) - (b.ts||0); });
+}
+
+async function writePack(id, pack){
+  state.packs[id] = pack;
+  render(); refreshPackSheet();
+  if(local){ saveLocal(); return; }
+  try{ await db.doc("packs/" + id).set(pack); }
+  catch(e){ handleWriteError(e); }
+}
+async function removePack(id){
+  delete state.packs[id];
+  render(); refreshPackSheet();
+  if(local){ saveLocal(); return; }
+  try{ await db.doc("packs/" + id).delete(); }
+  catch(e){ handleWriteError(e); }
+}
+
+/* One tap per pack, right under the add bar. */
+function renderPacks(){
+  var row = document.getElementById("packs");
+  var packs = sortedPacks();
+  row.textContent = "";
+  row.hidden = !packs.length;
+  if(!packs.length) return;
+
+  packs.forEach(function(p){
+    var b = el("button","pack");
+    b.type = "button";
+    b.setAttribute("aria-label","הוספת החבילה " + p.name);
+    var nm = el("span",null,p.name);
+    nm.setAttribute("dir","auto");
+    b.appendChild(nm);
+    b.appendChild(el("span","n", String(p.items.length)));
+    b.addEventListener("click", function(){ addPack(p); });
+    row.appendChild(b);
+  });
+  var ed = el("button","pack edit","עריכה");
+  ed.type = "button";
+  ed.setAttribute("aria-label","עריכת חבילות");
+  ed.addEventListener("click", openPacks);
+  row.appendChild(ed);
+}
+
+/* Repaints the pack manager if it's what's open, so the other phone's
+   changes show up live. */
+var packSheetPaint = null;
+function refreshPackSheet(){
+  if(packSheetPaint && !document.getElementById("veil").hidden) packSheetPaint();
+}
+
+function openPacks(){
+  openSheet(function(sheet){
+    var paint = function(){
+      sheet.textContent = "";
+      sheetHead(sheet, "חבילות");
+      sheet.appendChild(el("div","sublabel","חבילה היא כמה פריטים שמוסיפים בלחיצה אחת — למשל ירקות בסיס. מה שכבר ברשימה לא יתווסף פעמיים."));
+
+      var packs = sortedPacks();
+      var list = el("div","packlist");
+      packs.forEach(function(p){
+        var r = el("button","packrow");
+        r.type = "button";
+        var m = el("div","pr-main");
+        var nm = el("div","pr-name",p.name);
+        nm.setAttribute("dir","auto");
+        m.appendChild(nm);
+        var its = el("div","pr-items",p.items.join(" · "));
+        its.setAttribute("dir","auto");
+        m.appendChild(its);
+        r.appendChild(m);
+        r.appendChild(el("span","num", String(p.items.length)));
+        r.addEventListener("click", function(){ openPackEditor(p); });
+        list.appendChild(r);
+      });
+      if(packs.length) sheet.appendChild(list);
+
+      var row = el("div","sheet-row");
+      var add = el("button","btn btn-primary","חבילה חדשה");
+      add.type = "button";
+      add.addEventListener("click", function(){ openPackEditor(null); });
+      row.appendChild(add);
+      sheet.appendChild(row);
+
+      if(!packs.length){
+        var ex = el("button","linkbtn","להתחיל מדוגמה: ירקות בסיס");
+        ex.type = "button";
+        ex.addEventListener("click", function(){
+          openPackEditor({name:"ירקות בסיס", items:["מלפפון","עגבניה","גמבה"]}, true);
+        });
+        sheet.appendChild(ex);
+      }
+    };
+    packSheetPaint = paint;
+    paint();
+  }, "חבילות");
+}
+
+/* pack null => new. draft => prefilled but not yet saved. */
+function openPackEditor(pack, draft){
+  var isNew = !pack || draft;
+  packSheetPaint = null;
+  openSheet(function(sheet){
+    sheetHead(sheet, isNew ? "חבילה חדשה" : "עריכת חבילה");
+
+    var f1 = el("div","field");
+    var l1 = el("label",null,"שם החבילה");
+    l1.setAttribute("for","pack-name");
+    var i1 = el("input");
+    i1.type = "text"; i1.id = "pack-name"; i1.name = "pack-name";
+    i1.value = pack ? pack.name : "";
+    i1.placeholder = "ירקות בסיס";
+    i1.setAttribute("dir","auto");
+    i1.setAttribute("autocomplete","off");
+    f1.appendChild(l1); f1.appendChild(i1);
+    sheet.appendChild(f1);
+
+    var f2 = el("div","field");
+    var l2 = el("label",null,"פריטים — אחד בכל שורה");
+    l2.setAttribute("for","pack-items");
+    var ta = el("textarea");
+    ta.id = "pack-items"; ta.name = "pack-items";
+    ta.value = pack ? pack.items.join("\n") : "";
+    ta.placeholder = "מלפפון\nעגבניה\nגמבה";
+    ta.setAttribute("dir","auto");
+    f2.appendChild(l2); f2.appendChild(ta);
+    sheet.appendChild(f2);
+    var hint = el("div","sublabel","אפשר גם כמות או דחיפות: ״2 חלב״, ״לחם!״.");
+    hint.style.marginTop = "-8px";
+    sheet.appendChild(hint);
+
+    var fill = el("button","linkbtn","מילוי ממה שברשימה עכשיו");
+    fill.type = "button";
+    fill.addEventListener("click", function(){
+      var names = sortedItems().map(function(it){ return it.name; });
+      if(!names.length){ flash("הרשימה ריקה."); return; }
+      ta.value = names.join("\n");
+    });
+    sheet.appendChild(fill);
+
+    var save = function(){
+      var name = i1.value.trim().slice(0, 40);
+      /* Commas work too, for whoever types it on one line. */
+      var items = ta.value.split(/[\n,،]+/).map(function(x){ return x.trim(); })
+        .filter(Boolean).slice(0, 60);
+      if(!name){ flash("צריך לתת שם לחבילה."); i1.focus(); return; }
+      if(!items.length){ flash("צריך לפחות פריט אחד."); ta.focus(); return; }
+      var id = (pack && pack.id && !draft) ? pack.id : uid();
+      var ts = (pack && pack.ts && !draft) ? pack.ts : Date.now();
+      writePack(id, {name:name, items:items, ts:ts});
+      flash(isNew ? "החבילה נשמרה — היא מופיעה מתחת לשורת ההוספה." : "החבילה עודכנה.");
+      openPacks();
+    };
+    i1.addEventListener("keydown", function(e){ if(e.key === "Enter"){ e.preventDefault(); ta.focus(); } });
+
+    var row = el("div","sheet-row");
+    row.style.marginTop = "12px";
+    var back = el("button","btn btn-ghost","חזרה");
+    back.type = "button";
+    back.addEventListener("click", openPacks);
+    var go = el("button","btn btn-primary","שמירה");
+    go.type = "button";
+    go.addEventListener("click", save);
+    row.appendChild(back); row.appendChild(go);
+    sheet.appendChild(row);
+
+    if(!isNew){
+      var del = el("button","linkbtn danger","מחיקת החבילה");
+      del.type = "button";
+      del.addEventListener("click", function(){
+        var snapshot = state.packs[pack.id];
+        removePack(pack.id);
+        openPacks();
+        if(snapshot) flash("החבילה נמחקה.", {label:"החזר", run:function(){ writePack(pack.id, snapshot); }});
+      });
+      sheet.appendChild(del);
+    }
+
+    setTimeout(function(){ (pack ? ta : i1).focus(); }, 30);
+  }, isNew ? "חבילה חדשה" : "עריכת חבילה");
 }
 
 /* The dock carries one action, and only once there's something to clear. */
@@ -1434,6 +1776,7 @@ function openSheet(build, label){
   var sheet = document.getElementById("sheet");
   sheet.textContent = "";
   sheet.setAttribute("aria-label", label);
+  packSheetPaint = null;
   build(sheet);
   veil.hidden = false;
 }
@@ -1498,7 +1841,13 @@ function openSettings(){
     sheet.appendChild(f);
     sheet.appendChild(el("div","sublabel","מופיע כאות קטנה ליד כל מה שאתם מוסיפים, כדי שתדעו מי הוסיף מה. נשמר במכשיר הזה בלבד."));
 
-    sheet.appendChild(el("div","sublabel","כתיבת פריט מוסיפה אותו. כתיבת הוראה — תוריד חלב, מחיקת כל המסומנים — מבצעת אותה במקום."));
+    sheet.appendChild(el("div","sublabel","כתיבת פריט מוסיפה אותו. כתיבת הוראה — תוריד חלב, מחיקת כל המסומנים — מבצעת אותה במקום. סימן קריאה — ״חלב!״ — מסמן את הפריט כדחוף."));
+
+    var pk = el("button","linkbtn","חבילות — כמה פריטים בלחיצה אחת");
+    pk.type = "button";
+    pk.addEventListener("click", openPacks);
+    sheet.appendChild(pk);
+    sheet.appendChild(el("br"));
 
     var clear = el("button","linkbtn danger","מחיקת כל הפריטים ברשימה");
     clear.type = "button";
@@ -1516,9 +1865,27 @@ function openSettings(){
 
 /* -------------------------------------------------------------- suggest */
 
+/* Packs whose name matches, offered above the single items. */
+function packEntries(raw){
+  var q = heNorm(raw.toLowerCase().replace(/^!+|!+$/g,"").trim());
+  if(!q) return [];
+  return sortedPacks().filter(function(p){
+    return heNorm(p.name.toLowerCase()).indexOf(q) !== -1;
+  }).slice(0,3).map(function(p){
+    return {
+      cmd:true,
+      label:"📦 " + p.name,
+      sub:"חבילה · " + p.items.length + " פריטים",
+      run:function(){ addPack(p); }
+    };
+  });
+}
+
 /* Names you've added before, for plain-text autocomplete. */
 function catalogEntries(raw){
-  var query = raw.toLowerCase();
+  var query = raw.toLowerCase().replace(/^!+|!+$/g,"").trim();
+  var urgent = /^!|!$/.test(raw);
+  if(!query) return [];
   var onList = {};
   Object.keys(state.items).forEach(function(k){ onList[slug(state.items[k].name)] = 1; });
 
@@ -1530,7 +1897,7 @@ function catalogEntries(raw){
     })
     .slice(0,5)
     .map(function(c){
-      return {label:c.name, sub:catIcon(c.cat), run:function(){ addItem(c.name); }};
+      return {label:c.name, sub:catIcon(c.cat), run:function(){ addItem(urgent ? c.name + "!" : c.name); }};
     });
 }
 
@@ -1549,7 +1916,7 @@ function renderSuggest(q){
   if(!raw){ box.hidden = true; return; }
 
   var cmd = parseCommand(raw);
-  var entries = cmd ? commandEntries(cmd) : catalogEntries(raw);
+  var entries = cmd ? commandEntries(cmd) : packEntries(raw).concat(catalogEntries(raw));
   if(!entries.length){ box.hidden = true; return; }
   suggestList = entries;
 
@@ -1616,7 +1983,9 @@ document.getElementById("add-form").addEventListener("submit", function(e){
         return;
       }
     } else {
-      addItem(raw);
+      var exactPack = sortedPacks().filter(function(p){ return slug(p.name) === slug(raw); })[0];
+      if(exactPack) addPack(exactPack);
+      else addItem(raw);
     }
   }
   input.value = "";
@@ -1722,6 +2091,7 @@ render();
         done: !!v.done,
         ts: Number(v.ts) || 0
       };
+      if(v.urgent) item.urgent = true;
       /* Left off entirely when absent, so items without one don't grow an
          empty field the next time they're written. */
       if(isPhoto(v.img)) item.img = v.img;
@@ -1739,6 +2109,18 @@ render();
     });
     state.catalog = next;
     render();
+  }, onErr);
+
+  db.collection("packs").onSnapshot(function(snap){
+    var next = {};
+    snap.docs.forEach(function(doc){
+      var v = doc.data() || {};
+      var lines = Array.isArray(v.items) ? v.items.map(String).filter(Boolean) : [];
+      if(v.name && lines.length) next[doc.id] = {name:String(v.name), items:lines, ts:Number(v.ts) || 0};
+    });
+    state.packs = next;
+    render();
+    refreshPackSheet();
   }, onErr);
 })();
 
