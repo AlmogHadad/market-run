@@ -239,6 +239,20 @@ def write_branch(path, head, items, deals=()):
                 '\n],"deals":[\n' + ",\n".join(dump(d) for d in deals) + "\n]}\n")
 
 
+# A branch may skip a day or two; past this many days without a full list
+# the run is marked failed so it gets noticed.
+STALE_DAYS = 3
+
+
+def days_old(priced):
+    """Days since a "YYYY-MM-DDTHH:MM" stamp, or None if it can't be read."""
+    try:
+        t = datetime.datetime.strptime(priced, "%Y-%m-%dT%H:%M")
+    except ValueError:
+        return None
+    return (datetime.datetime.now() - t).total_seconds() / 86400
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     index_path = os.path.join(OUT, "index.json")
@@ -248,17 +262,30 @@ def main():
     except (OSError, ValueError):
         old = {}
 
-    chains, failed = [], []
+    chains, failed, stale = [], [], []
     for cid, (user, cname, wanted) in BRANCHES.items():
         try:
             s, token = login(user)
             files = list_files(s, token)
             names = store_names(s, files)
             branches = []
+            kept = {b["store"]: b for b in old.get(cid, {}).get("branches", [])}
             for store in wanted:
                 fname = latest_full(files, store)
                 if not fname:
-                    raise RuntimeError("no PriceFull for %s %s" % (cid, store))
+                    # The portal lists only today's files, and a branch
+                    # sometimes posts no full list on a given day (often on
+                    # Shabbat). Keep its last file unless it's gone stale.
+                    prev = kept.get(store)
+                    if not prev or not os.path.exists(os.path.join(OUT, prev["file"])):
+                        raise RuntimeError("no PriceFull for %s %s" % (cid, store))
+                    branches.append(prev)
+                    age = days_old(prev.get("priced", ""))
+                    print("%-10s %s kept the file from %s (no full list today)" % (
+                        cid, store, prev.get("priced") or "?"), file=sys.stderr)
+                    if age is None or age > STALE_DAYS:
+                        stale.append("%s %s" % (cid, store))
+                    continue
                 items = items_of(parse_xml(download(s, fname)))
                 if len(items) < 500:
                     raise RuntimeError("only %d items in %s" % (len(items), fname))
@@ -306,8 +333,10 @@ def main():
         json.dump(index, f, ensure_ascii=False, indent=1)
         f.write("\n")
 
-    if failed:
-        sys.exit("failed: " + ", ".join(failed))
+    if failed or stale:
+        sys.exit("; ".join(filter(None, [
+            failed and "failed: " + ", ".join(failed),
+            stale and "no new full list for %d+ days: %s" % (STALE_DAYS, ", ".join(stale))])))
 
 
 if __name__ == "__main__":
