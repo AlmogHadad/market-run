@@ -52,13 +52,14 @@ self.addEventListener("fetch", function(e){
   var ours = url.origin === self.location.origin ||
              host === "fonts.googleapis.com" ||
              host === "fonts.gstatic.com" ||
-             host === "www.gstatic.com";
+             host === "www.gstatic.com" ||
+             host === "almoghadad.github.io";
   if(!ours) return;
 
   /* The page and the price lists: network first, so a new version lands the
-     moment there's signal. Prices are refreshed twice a day. */
+     moment there's signal. Prices are refreshed twice a day on GitHub Pages. */
   if(req.mode === "navigate" || url.pathname === "/" || /\/index\.html$/.test(url.pathname) ||
-     /^\/prices\//.test(url.pathname)){
+     host === "almoghadad.github.io"){
     e.respondWith(
       fetch(req).then(function(res){
         var copy = res.clone();

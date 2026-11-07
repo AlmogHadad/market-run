@@ -1816,10 +1816,12 @@ function openPackEditor(pack, draft){
 
 /* ---------------------------------------------------------------- prices */
 
-/* The chains' own price lists, refreshed twice a day into prices/ by a
-   GitHub Action (scripts/fetch_prices.py). Each product is
-   [code, name, price, perUnit, perUnitOf, size, weighted]. Regular prices
-   only — sales aren't included. */
+/* The chains' own price lists, refreshed twice a day and published to GitHub
+   Pages by the public repo AlmogHadad/market-run-prices (kept off Netlify so
+   price updates don't use deploy credits). Each product is
+   [code, name, price, perUnit, perUnitOf, size, weighted, dealIndexes?]. */
+
+var PRICES_URL = "https://almoghadad.github.io/market-run-prices/";
 
 var LS_BRANCHES = "marketrun.branches";   /* per device: chain -> store */
 
@@ -1851,7 +1853,7 @@ function getJSON(path){
     return r.json();
   });
 }
-function loadIndex(){ return getJSON("prices/index.json"); }
+function loadIndex(){ return getJSON(PRICES_URL + "index.json"); }
 
 /* Search text: final letters folded, punctuation dropped. */
 function pnorm(s){
@@ -1890,7 +1892,7 @@ function loadPrices(){
                c.branches[0];
       return {id:c.id, name:c.name, store:br.store, branch:br.name, file:br.file, priced:br.priced};
     });
-    return Promise.all(chains.map(function(c){ return getJSON("prices/" + c.file); }))
+    return Promise.all(chains.map(function(c){ return getJSON(PRICES_URL + c.file); }))
       .then(function(files){
         var groups = new Map();
         files.forEach(function(f, i){
