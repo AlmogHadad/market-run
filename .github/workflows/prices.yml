@@ -7,9 +7,10 @@ name: Update prices
 
 on:
   schedule:
-    # UTC. The chains post their full lists early morning and around noon.
-    - cron: "15 5 * * *"
-    - cron: "45 12 * * *"
+    # UTC, every other day: each price commit is a Netlify deploy, and the
+    # free plan's credits can't cover two a day. The chains post their full
+    # lists overnight, so 06:30 UTC (08:30-09:30 in Israel) gets fresh ones.
+    - cron: "30 6 */2 * *"
   workflow_dispatch:
 
 permissions:
