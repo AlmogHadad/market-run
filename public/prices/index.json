@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-06T13:56Z",
+ "updated": "2026-11-07T11:42Z",
  "chains": [
   {
    "id": "ramilevi",
@@ -10,36 +10,36 @@
      "store": "062",
      "name": "צק פוסט",
      "file": "ramilevi-062.json",
-     "items": 14204,
-     "priced": "2026-11-06T12:00"
+     "items": 14209,
+     "priced": "2026-11-07T12:00"
     },
     {
      "store": "057",
      "name": "עזריאלי חיפה",
      "file": "ramilevi-057.json",
-     "items": 13964,
-     "priced": "2026-11-06T12:15"
+     "items": 13965,
+     "priced": "2026-11-07T12:15"
     },
     {
      "store": "019",
      "name": "אדמרליטי",
      "file": "ramilevi-019.json",
-     "items": 13036,
-     "priced": "2026-11-06T12:01"
+     "items": 13038,
+     "priced": "2026-11-07T12:00"
     },
     {
      "store": "015",
      "name": "נשר",
      "file": "ramilevi-015.json",
-     "items": 14464,
-     "priced": "2026-11-06T06:00"
+     "items": 14484,
+     "priced": "2026-11-07T12:00"
     },
     {
      "store": "727",
      "name": "קיריון קרית ביאליק",
      "file": "ramilevi-727.json",
-     "items": 3412,
-     "priced": "2026-11-06T12:00"
+     "items": 3416,
+     "priced": "2026-11-07T12:00"
     }
    ]
   },
@@ -80,8 +80,8 @@
      "store": "013",
      "name": "חוצות המפרץ",
      "file": "yohananof-013.json",
-     "items": 11911,
-     "priced": "2026-11-06T00:40"
+     "items": 11895,
+     "priced": "2026-11-07T00:40"
     }
    ]
   }
