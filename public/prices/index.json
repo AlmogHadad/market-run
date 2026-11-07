@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-07T17:52Z",
+ "updated": "2026-11-07T20:24Z",
  "chains": [
   {
    "id": "ramilevi",
@@ -53,7 +53,7 @@
      "name": "חיפה",
      "file": "osherad-030.json",
      "items": 6376,
-     "priced": "2026-11-06T14:05"
+     "priced": "2026-11-07T14:05"
     },
     {
      "store": "005",
@@ -67,7 +67,7 @@
      "name": "קרית ים",
      "file": "osherad-029.json",
      "items": 6298,
-     "priced": "2026-11-06T14:05"
+     "priced": "2026-11-07T14:05"
     }
    ]
   },
