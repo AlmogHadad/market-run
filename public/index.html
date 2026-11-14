@@ -428,6 +428,16 @@ button{cursor:pointer;background:none;border:none}
 }
 .field input:focus{border-color:var(--accent);outline:none}
 .field.narrow input{width:140px}
+
+/* ---------- list gate: a device that doesn't know its list yet ---------- */
+.gate{
+  position:fixed;inset:0;z-index:80;background:var(--ground);
+  display:flex;align-items:center;justify-content:center;padding:16px;
+}
+.gate-card{width:100%;max-width:420px}
+.gate-card h2{font-family:var(--display);font-weight:800;font-size:21px;margin:0 0 6px}
+.gate-card .btn{width:100%}
+.gate-err{font-size:13px;color:var(--danger);margin:-8px 0 14px}
 .apicks{display:flex;flex-wrap:wrap;gap:7px}
 .apick{
   display:flex;align-items:center;gap:6px;
@@ -487,6 +497,20 @@ button{cursor:pointer;background:none;border:none}
 </style>
 </head>
 <body>
+
+<div class="gate" id="gate" hidden>
+  <form class="gate-card" id="gate-form" autocomplete="off">
+    <h2>לאיזו רשימה להיכנס?</h2>
+    <p class="sublabel">הדביקו את הקישור או את קוד הרשימה שקיבלתם. צריך לעשות את זה רק פעם אחת במכשיר הזה.</p>
+    <div class="field">
+      <label for="gate-code">קישור או קוד רשימה</label>
+      <input id="gate-code" name="gate-code" type="text" dir="ltr" placeholder="mr-…"
+             autocapitalize="off" autocorrect="off" spellcheck="false">
+    </div>
+    <div class="gate-err" id="gate-err" hidden>זה לא נראה כמו קוד רשימה — הוא מתחיל ב-mr-.</div>
+    <button class="btn btn-primary" type="submit">כניסה לרשימה</button>
+  </form>
+</div>
 
 <div class="app">
   <header class="topbar">
@@ -555,9 +579,49 @@ var FIREBASE_CONFIG = {
   appId: "1:361554112766:web:1e35ed23561120855975af"
 };
 
-/* Everyone who opens this page shares this one list. The id is what the
-   security rules pin to, so nothing else in the project is reachable. */
-var LIST_ID = "mr-x8f3qn2vk9rt5wzp";
+/* Which list this page shows. Each household gets its own link,
+   market-run.netlify.app/#<list id>, and only ever sees that list. The id is
+   the secret: the security rules allow only the ids written in them, and the
+   other households' ids never appear in this page. */
+var ORIGINAL_LIST = "mr-x8f3qn2vk9rt5wzp";
+var LS_LIST = "marketrun.list";
+
+function listIdFrom(text){
+  var m = String(text || "").toLowerCase().match(/mr-[a-z0-9]{16}(?![a-z0-9])/);
+  return m ? m[0] : "";
+}
+
+/* The link wins, then whatever this device opened last. A home-screen
+   install opens the bare URL with no id, so the saved one is what keeps it
+   on its own list. */
+var LIST_ID = (function(){
+  var fromLink = listIdFrom(location.hash);
+  var saved = "";
+  try{ saved = listIdFrom(localStorage.getItem(LS_LIST)); }catch(e){}
+  var id = fromLink || saved;
+  if(!id){
+    /* Devices that used the app back when it had a single list kept its data
+       under the unsuffixed keys: they belong to the original list. A fresh
+       device gets nothing here, so it never lands on someone else's list. */
+    try{
+      if(localStorage.getItem("marketrun.v1") || localStorage.getItem("marketrun.name")) id = ORIGINAL_LIST;
+    }catch(e){}
+  }
+  if(id){
+    try{ localStorage.setItem(LS_LIST, id); }catch(e){}
+    /* Put the id in the address so "Add to Home Screen" carries it along. */
+    if(!fromLink){ try{ history.replaceState(null, "", "#" + id); }catch(e){} }
+  }
+  return id;
+})();
+
+window.addEventListener("hashchange", function(){
+  var id = listIdFrom(location.hash);
+  if(id && id !== LIST_ID){
+    try{ localStorage.setItem(LS_LIST, id); }catch(e){}
+    location.reload();
+  }
+});
 
 /* ---------------------------------------------------------------- data */
 
@@ -678,8 +742,11 @@ var local = true;           /* true => this device only, no sync */
 var myName = "";            /* per-device, so items can say who added them */
 var suggestIdx = -1, suggestList = [];
 
-var LS = "marketrun.v1";
-var LS_NAME = "marketrun.name";
+/* Per list, so two lists opened on one device never overwrite each other's
+   offline copy. The original list keeps the old keys and its saved data. */
+var LS_SUFFIX = (LIST_ID === ORIGINAL_LIST) ? "" : "." + LIST_ID;
+var LS = "marketrun.v1" + LS_SUFFIX;
+var LS_NAME = "marketrun.name" + LS_SUFFIX;
 
 /* ---------------------------------------------------------------- utils */
 
@@ -2652,7 +2719,21 @@ if(myName){
 }
 render();
 
+if(!LIST_ID){
+  document.getElementById("gate").hidden = false;
+  document.getElementById("gate-form").addEventListener("submit", function(e){
+    e.preventDefault();
+    var id = listIdFrom(document.getElementById("gate-code").value);
+    if(!id){ document.getElementById("gate-err").hidden = false; return; }
+    try{ localStorage.setItem(LS_LIST, id); }catch(err){}
+    history.replaceState(null, "", "#" + id);
+    location.reload();
+  });
+}
+
 (function(){
+  /* No list yet: the gate is up, and nothing may sync until it's answered. */
+  if(!LIST_ID) return;
   if(typeof firebase === "undefined" || !firebase.firestore){
     banner("לא הצלחנו לטעון את שירות הסנכרון — המכשיר הזה עובד על עותק מקומי.");
     return;
